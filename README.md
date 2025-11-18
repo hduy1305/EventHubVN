@@ -173,8 +173,10 @@ Hệ thống xử lý toàn bộ vòng đời một sự kiện: tạo sự ki�
 
 ## Cơ sở dữ liệu tổng quan (chưa chia db cho từng service)
 
-ảnh ...
+![db_tong_quan(chua chia service)](https://github.com/user-attachments/assets/9f7a7add-77fc-4fb5-a7df-ab095f049ba4)
+
 
 
 ---
+
 
