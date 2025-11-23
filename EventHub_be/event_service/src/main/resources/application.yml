@@ -1,0 +1,17 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/eventdb?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+jwt:
+  secret: U6lM6J1Pk2F7kUdfxNnN8amA0J8G9A7Lz41aHwD9W7T1J6jUuV9C8qA4eR7mA6K8N2mO8yT9Z5D3sQ==
