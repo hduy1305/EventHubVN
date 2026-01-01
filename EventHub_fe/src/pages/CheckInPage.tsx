@@ -1,0 +1,506 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Container, Grid, Card, CardContent, Button, TextField, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Box, CircularProgress, Typography, Alert, Stack, Tooltip } from '@mui/material';
+import { EventsService } from '../api/services/EventsService';
+import { TicketsService } from '../api/services/TicketsService';
+import { UsersService } from '../api/services/UsersService';
+import type { Event } from '../api/models/Event';
+import type { CheckInLogDto } from '../api/models/CheckInLogDto';
+import type { TicketResponse } from '../api/models/TicketResponse';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import HistoryIcon from '@mui/icons-material/History';
+import RefreshIcon from '@mui/icons-material/Refresh';
+
+type BarcodeDetectorType = {
+  detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
+};
+
+declare global {
+  interface Window {
+    BarcodeDetector?: {
+      new(init?: { formats: string[] }): BarcodeDetectorType;
+    };
+  }
+}
+
+const CheckInPage: React.FC = () => {
+  const { user } = useAuth();
+  const { showNotification } = useNotification();
+  const [loading, setLoading] = useState<boolean>(true);
+  const isOrganizer = user?.roles?.includes('ROLE_ORGANIZER') || false;
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN') || false;
+
+  const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
+
+  const [ticketCodeInput, setTicketCodeInput] = useState<string>('');
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [scannerError, setScannerError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [assigning, setAssigning] = useState<boolean>(false);
+
+  const [checkInLogs, setCheckInLogs] = useState<CheckInLogDto[]>([]);
+  const [attendeeTickets, setAttendeeTickets] = useState<TicketResponse[]>([]);
+  const [now, setNow] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      showNotification('User not authenticated.', 'error');
+      setLoading(false);
+      return;
+    }
+    fetchManagedEvents();
+  }, [user, showNotification]);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      const event = availableEvents.find(e => e.id === parseInt(selectedEventId));
+      setCurrentEvent(event || null);
+      if (event) {
+        fetchEventData(event.id!);
+      }
+    } else {
+      setCurrentEvent(null);
+      setCheckInLogs([]);
+      setAttendeeTickets([]);
+    }
+  }, [selectedEventId, availableEvents]);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let rafId: number | null = null;
+
+    const startScanner = async () => {
+      setScannerError(null);
+      if (!window.BarcodeDetector) {
+        setScannerError('QR scanning not supported in this browser.');
+        setIsScanning(false);
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const scanLoop = async () => {
+          if (!isScanning || !videoRef.current) return;
+          try {
+            const codes = await detector.detect(videoRef.current);
+            if (codes.length > 0) {
+              const value = codes[0].rawValue;
+              setTicketCodeInput(value);
+              showNotification('QR detected, code filled.', 'success');
+              setIsScanning(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Scan error', err);
+          }
+          rafId = requestAnimationFrame(scanLoop);
+        };
+        scanLoop();
+      } catch (err: any) {
+        console.error('Scanner start failed', err);
+        setScannerError(err.message || 'Unable to access camera.');
+        setIsScanning(false);
+      }
+    };
+
+    if (isScanning) {
+      startScanner();
+    }
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [isScanning, showNotification]);
+
+  const fetchManagedEvents = async () => {
+    setLoading(true);
+    try {
+      const response = await EventsService.getApiEventsSearch(undefined, undefined, undefined, undefined, undefined, undefined, 'PUBLISHED', undefined, 0, 100);
+      const allEvents = response.content || [];
+      const published = allEvents.filter(event => event.status === 'PUBLISHED');
+      const visibleEvents = isOrganizer && !isAdmin
+        ? published.filter(event => event.organizerId === user?.id)
+        : published;
+      setAvailableEvents(visibleEvents);
+    } catch (err: any) {
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch events.';
+      showNotification(errorMessage, 'error');
+      console.error("Failed to fetch events:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCheckInWindow = (event: Event) => {
+    if (!event.startTime || !event.endTime) {
+      return null;
+    }
+    const start = new Date(event.startTime);
+    const end = new Date(event.endTime);
+    const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
+    return { windowStart, start, end };
+  };
+
+  const checkInWindow = currentEvent ? getCheckInWindow(currentEvent) : null;
+  const isCheckInActive = !!checkInWindow && now >= checkInWindow.windowStart && now <= checkInWindow.end;
+  const isCheckInEnded = !!checkInWindow && now > checkInWindow.end;
+  const showCheckInTooltip = isCheckInActive;
+  const showCountdown = !!checkInWindow && now < checkInWindow.windowStart;
+
+  const formatCountdown = (target: Date) => {
+    const diffMs = Math.max(0, target.getTime() - now.getTime());
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const fetchEventData = useCallback(async (eventId: number) => {
+    setLoading(true);
+    try {
+      const logs = await TicketsService.getApiTicketsEventCheckInLogs(eventId);
+      setCheckInLogs(logs);
+
+      const tickets = await TicketsService.getApiTicketsEvent(eventId);
+      setAttendeeTickets(tickets);
+    } catch (err: any) {
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch event data.';
+      showNotification(errorMessage, 'error');
+      console.error("Failed to fetch event data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [showNotification]);
+
+  const handleTicketScan = async (ticketCode: string, isRescan: boolean = false) => {
+    if (!selectedEventId || !ticketCode) {
+      showNotification('Please select an event and enter a ticket code.', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const scannedTicket = await TicketsService.postApiTicketsScan(ticketCode, `Gate ${selectedEventId}-A`, `Device-${user?.id}`, user?.id);
+      showNotification(`Ticket ${scannedTicket.ticketCode} for ${scannedTicket.attendeeName} checked in successfully!`, 'success');
+      if (!isRescan) { // Only clear input if it was a manual entry scan
+        setTicketCodeInput('');
+      }
+      fetchEventData(parseInt(selectedEventId));
+    } catch (err: any) {
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Check-in failed.';
+      showNotification(errorMessage, 'error');
+      console.error("Check-in failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualCheckIn = async (ticketCode: string) => {
+    if (!selectedEventId) {
+      showNotification('Please select an event first.', 'warning');
+      return;
+    }
+
+    if (!window.confirm(`Manually check in ticket ${ticketCode}?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const scannedTicket = await TicketsService.postApiTicketsScan(ticketCode, `Manual Gate ${selectedEventId}`, `Device-${user?.id}`, user?.id);
+      showNotification(`Ticket ${scannedTicket.ticketCode} for ${scannedTicket.attendeeName} manually checked in successfully!`, 'success');
+      fetchEventData(parseInt(selectedEventId));
+    } catch (err: any) {
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Manual check-in failed.';
+      showNotification(errorMessage, 'error');
+      console.error("Manual check-in failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignToEvent = async () => {
+    if (!user?.id || !selectedEventId) {
+      showNotification('Select an event before assigning.', 'warning');
+      return;
+    }
+    setAssigning(true);
+    try {
+      await UsersService.postApiUsersAssignedEvents(user.id, parseInt(selectedEventId));
+      showNotification('You have been assigned to this event for check-in.', 'success');
+    } catch (err: any) {
+      const msg = err.body?.message || err.response?.data?.message || err.message || 'Failed to assign staff to event.';
+      showNotification(msg, 'error');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleExportAttendees = () => {
+    if (!currentEvent) {
+      showNotification('Please select an event first.', 'warning');
+      return;
+    }
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + "Ticket Code,Attendee Name,Attendee Email,Status,Check-in Time\n"
+      + attendeeTickets.map(t => 
+          `${t.ticketCode},${t.attendeeName},${t.attendeeEmail},${t.status},${checkInLogs.find(log => log.ticket?.ticketCode === t.ticketCode)?.checkInTime || ''}`
+        ).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `attendees_${currentEvent.name?.replace(/\s/g, '_')}_${selectedEventId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showNotification('Attendee list exported!', 'success');
+  };
+
+  if (loading && !currentEvent) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Typography variant="h4" gutterBottom fontWeight={700}>Check-in Operations</Typography>
+      
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+            <TextField
+              label="Event Date"
+              type="date"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+            <TextField
+              select
+              label="Select Event"
+              fullWidth
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(e.target.value)}
+              helperText="Pick an event after choosing date to lock check-in window"
+            >
+              <MenuItem value="">-- Select an Event --</MenuItem>
+              {availableEvents
+                .filter(event => {
+                  if (!selectedDate || !event.startTime) return true;
+                  return event.startTime.startsWith(selectedDate);
+                })
+                .map(event => (
+                  <MenuItem key={event.id} value={event.id}>
+                    {event.name} ({new Date(event.startTime || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                  </MenuItem>
+                ))}
+            </TextField>
+            <Button
+              variant="outlined"
+              onClick={handleAssignToEvent}
+              disabled={!selectedEventId || assigning}
+            >
+              {assigning ? 'Assigning...' : 'Assign me to this event'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      {currentEvent && (
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ mb: 4 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Check-in for {currentEvent.name}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Window opens 15 minutes before start and closes at end time. Current start: {currentEvent.startTime ? new Date(currentEvent.startTime).toLocaleString() : 'N/A'}
+                </Typography>
+                {showCountdown && checkInWindow && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Check-in opens in {formatCountdown(checkInWindow.windowStart)}
+                  </Typography>
+                )}
+                <Box component="form" onSubmit={(e) => { e.preventDefault(); handleTicketScan(ticketCodeInput); }} sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Enter Ticket Code (or scan QR)"
+                    value={ticketCodeInput}
+                    onChange={(e) => setTicketCodeInput(e.target.value)}
+                    required
+                    sx={{ mb: 2 }}
+                  />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+                    <Tooltip title={showCheckInTooltip ? 'Check-in is available' : ''} disableHoverListener={!showCheckInTooltip}>
+                      <span>
+                        <Button
+                          variant={isScanning ? 'outlined' : 'contained'}
+                          color="secondary"
+                          startIcon={<QrCodeScannerIcon />}
+                          onClick={() => setIsScanning(!isScanning)}
+                          disabled={!isCheckInActive || isCheckInEnded}
+                        >
+                          {isScanning ? 'Stop scanning' : 'Scan QR'}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    {scannerError && <Typography color="error" variant="body2">{scannerError}</Typography>}
+                  </Stack>
+                  {isScanning && (
+                    <Box sx={{ mb: 2 }}>
+                      <video ref={videoRef} style={{ width: '100%', maxHeight: 240, borderRadius: 8 }} muted playsInline />
+                    </Box>
+                  )}
+                  <Tooltip title={showCheckInTooltip ? 'Check-in is available' : ''} disableHoverListener={!showCheckInTooltip}>
+                    <span>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        fullWidth
+                        disabled={loading || !isCheckInActive || isCheckInEnded}
+                        startIcon={<QrCodeScannerIcon />}
+                        size="large"
+                      >
+                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Scan / Check-in'}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Box>
+                <Button variant="outlined" fullWidth onClick={handleExportAttendees} startIcon={<HistoryIcon />}>
+                  Export Attendee List (CSV)
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Card sx={{ mb: 4 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Check-in History</Typography>
+                {checkInLogs.length === 0 ? (
+                  <Alert severity="info">No check-in logs available for this event yet.</Alert>
+                ) : (
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Ticket Code</TableCell>
+                          <TableCell>Time</TableCell>
+                          <TableCell>Action</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {checkInLogs.map(log => (
+                          <TableRow key={log.id}>
+                            <TableCell>{log.ticket?.ticketCode}</TableCell>
+                            <TableCell>{new Date(log.checkInTime).toLocaleTimeString()}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleTicketScan(log.ticket?.ticketCode || '', true)}
+                                disabled={loading || !isCheckInActive || isCheckInEnded}
+                                startIcon={<RefreshIcon />}
+                              >
+                                Scan Again
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {currentEvent && (
+        <>
+          <Typography variant="h5" gutterBottom fontWeight={700} sx={{ mt: 4 }}>All Event Tickets</Typography>
+          {attendeeTickets.length === 0 ? (
+            <Alert severity="info">No tickets sold for this event yet.</Alert>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Ticket Code</TableCell>
+                    <TableCell>Attendee Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Check-in Time</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {attendeeTickets.map(ticket => {
+                    const log = checkInLogs.find(l => l.ticket?.ticketCode === ticket.ticketCode);
+                    const isCheckedIn = ticket.status === 'SCANNED';
+                    return (
+                      <TableRow key={ticket.id}>
+                        <TableCell>{ticket.ticketCode}</TableCell>
+                        <TableCell>{ticket.attendeeName}</TableCell>
+                        <TableCell>{ticket.attendeeEmail}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={isCheckedIn ? 'Checked In' : 'Pending'}
+                            color={isCheckedIn ? 'success' : 'default'}
+                            size="small" 
+                          />
+                        </TableCell>
+                        <TableCell>{log?.checkInTime ? new Date(log.checkInTime).toLocaleString() : '-'}</TableCell>
+                        <TableCell>
+                          {!isCheckedIn && (
+                            <Tooltip title={showCheckInTooltip ? 'Check-in is available' : ''} disableHoverListener={!showCheckInTooltip}>
+                              <span>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => handleManualCheckIn(ticket.ticketCode!)}
+                                  disabled={loading || !isCheckInActive || isCheckInEnded}
+                                >
+                                  Manual
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </>
+      )}
+    </Container>
+  );
+};
+
+export default CheckInPage;
