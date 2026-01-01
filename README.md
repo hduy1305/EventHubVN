@@ -1,4 +1,4 @@
-# EvenHub – Real-Time Event Management & Ticketing Platform
+# EventHub – Real-Time Event Management & Ticketing Platform
 
 ## 🧩 Tech Stack
 
@@ -7,19 +7,17 @@
 - ReactJS  
 
 ### **Backend**
-- Python  
-- Django  
+- Java  
+- Springboot  
 
 ### **Database**
-- PostgreSQL  
-- Redis (real-time seat locking & queue)  
-- Elasticsearch (optional – search)  
+- MySQL  
 
 ---
 
 ## Tổng quan dự án
 
-**EvenHub** là nền tảng hỗ trợ quản lý sự kiện và bán vé **thời gian thực**, giúp kết nối **người tham dự**, **nhà tổ chức**, và **nhân viên vận hành** trong một hệ thống ổn định, bảo mật và chống đặt trùng.
+**EventHub** là nền tảng hỗ trợ quản lý sự kiện và bán vé **thời gian thực**, giúp kết nối **người tham dự**, **nhà tổ chức**, và **nhân viên vận hành** trong một hệ thống ổn định, bảo mật và chống đặt trùng.
 
 Hệ thống xử lý toàn bộ vòng đời một sự kiện: tạo sự kiện → bán vé → check-in tại cổng → báo cáo.
 
