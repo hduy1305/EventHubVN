@@ -1,0 +1,24 @@
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.log
+
+# Node/Frontend
+EventHub_fe/node_modules/
+EventHub_fe/dist/
+EventHub_fe/.env
+EventHub_fe/.env.local
+EventHub_fe/.env.*.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
