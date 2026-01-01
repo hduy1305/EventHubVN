@@ -1,0 +1,82 @@
+@startuml
+!theme plain
+start
+:User selects Event;
+:User selects Ticket Type & Quantity;
+:User selects Seats (Optional);
+
+partition "Shopping Cart / Reservation Phase" {
+    :Add items to Cart (Create PENDING Reservation);
+    :System sets 5-minute expiry for PENDING Reservation;
+    :User reviews cart / continues shopping;
+    if (User removes item from cart) then (yes)
+        :Cancel Reservation;
+    endif
+    if (Reservation expires) then (yes)
+        :System cancels Reservation (EXPIRED);
+    endif
+}
+
+partition "Order Placement" {
+    :User proceeds to checkout;
+    :User enters personal details;
+    :User applies Discount Code (Optional);
+    :System validates Discount;
+    if (Discount Valid?) then (yes)
+        :System applies Discount to total amount;
+    else (no)
+        :Notify user about invalid/expired discount;
+    endif
+    :User selects Payment Method;
+    :User confirms order details;
+    :Create Order (PENDING);
+    :System confirms PENDING Reservations;
+}
+
+partition "Payment Processing & Fulfillment" {
+    :System initiates Payment (via Payment Service);
+    if (Payment Successful?) then (yes)
+        :System receives Payment Callback;
+        :Update Order to PAID;
+        fork
+            :Publish 'order.paid' Event;
+            :Ticket Service generates Tickets (ISSUED);
+        fork again
+            :Notification Service sends Email/SMS;
+        end fork
+    else (no)
+        :Update Order to FAILED / CANCELLED;
+        :Release Reservations;
+        :Notify user of payment failure;
+    endif
+}
+
+partition "Post-Purchase & Operations" {
+    :User views/manages their Tickets (via Ticket Service);
+    if (Organizer enables ticket transfer) then (yes)
+        :User requests Ticket Transfer;
+        :Ticket Service processes Transfer (TRANSFERRED);
+        :Notification Service sends Transfer Email;
+    endif
+    if (Organizer enables name change) then (yes)
+        :User requests Attendee Name Change;
+        :Ticket Service updates Ticket Attendee Name;
+    endif
+    if (Refund allowed & within deadline) then (yes)
+        :User requests Refund / Cancellation;
+        :System processes Refund;
+        :Update Order/Tickets to REFUNDED;
+    endif
+    :Staff scans Ticket for Check-in;
+    :Ticket Service validates Ticket;
+    if (Valid & Not Scanned) then (yes)
+        :Ticket Service updates to SCANNED;
+        :Ticket Service logs Check-in event;
+    else (no)
+        :Alert Staff / Reject entry;
+    endif
+    :Organizer accesses Reports & Analytics;
+}
+
+stop
+@enduml

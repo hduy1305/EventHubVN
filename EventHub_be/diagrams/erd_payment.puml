@@ -1,0 +1,17 @@
+@startuml
+!theme plain
+hide circle
+skinparam linetype ortho
+
+entity "payment_transactions" {
+    *id : BIGINT <<PK>>
+    --
+    order_id : BIGINT
+    payment_method : VARCHAR(50)
+    transaction_id : VARCHAR(255)
+    amount : DECIMAL(10,2)
+    status : VARCHAR(50)
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+@enduml

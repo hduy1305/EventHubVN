@@ -1,0 +1,37 @@
+package com.example.event_service.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "ticket_types")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class TicketType {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String code;
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name = "event_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Event event;
+
+    private BigDecimal price;
+    private Integer quota;
+    private Integer purchaseLimit; // New field: Max tickets per user
+    private LocalDateTime startSale;
+    private LocalDateTime endSale;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+}

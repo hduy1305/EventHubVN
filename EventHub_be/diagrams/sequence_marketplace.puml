@@ -1,0 +1,90 @@
+@startuml
+!theme plain
+actor Seller
+actor Buyer
+participant "API Gateway" as Gateway
+participant "Auth Service" as Auth
+participant "Ticket Service" as TicketService
+participant "Payment Service" as PaymentService
+database "Ticket DB" as TicketDB
+database "Marketplace DB" as MarketplaceDB
+
+group Post Ticket for Sale
+    Seller -> Gateway : POST /api/marketplace (ticketCode, price)
+    activate Seller
+    activate Gateway
+    Gateway -> Auth : Validate Token (Seller)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    
+    Gateway -> TicketService : postTicket(PostTicketRequest)
+    activate TicketService
+    
+    TicketService -> TicketDB : Find Ticket
+    activate TicketDB
+    TicketDB --> TicketService : Ticket Details
+    deactivate TicketDB
+    
+    TicketService -> TicketService : Validate Ticket Status (ISSUED)
+    
+    TicketService -> MarketplaceDB : Save Listing (ACTIVE)
+    activate MarketplaceDB
+    MarketplaceDB --> TicketService : Listing Details
+    deactivate MarketplaceDB
+    
+    TicketService --> Gateway : Listing Details
+    deactivate TicketService
+    Gateway --> Seller : Listing Created
+    deactivate Gateway
+    deactivate Seller
+end
+
+group Buy Ticket
+    Buyer -> Gateway : POST /api/marketplace/{listingId}/buy
+    activate Buyer
+    activate Gateway
+    Gateway -> Auth : Validate Token (Buyer)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    
+    Gateway -> TicketService : buyTicket(listingId, buyerId)
+    activate TicketService
+    
+    TicketService -> MarketplaceDB : Find Listing
+    activate MarketplaceDB
+    MarketplaceDB --> TicketService : Listing Details
+    deactivate MarketplaceDB
+    
+    TicketService -> TicketService : Validate Listing Status (ACTIVE)
+    
+    TicketService -> PaymentService : processPayment(PaymentRequest)
+    activate PaymentService
+    PaymentService --> TicketService : PaymentResponse (Payment URL)
+    deactivate PaymentService
+    
+    alt Payment Initiated
+        TicketService -> MarketplaceDB : Update Listing (SOLD)
+        activate MarketplaceDB
+        MarketplaceDB --> TicketService : Updated
+        deactivate MarketplaceDB
+        
+        TicketService -> TicketDB : Update Ticket Status (TRANSFERRED)
+        activate TicketDB
+        TicketDB --> TicketService : Updated
+        deactivate TicketDB
+        
+        TicketService -[#blue]> Notification : Event: ticket.sold
+        
+        TicketService --> Gateway : PaymentResponse
+        Gateway --> Buyer : Redirect to Payment URL
+    else Payment Failed
+        TicketService --> Gateway : Error
+        Gateway --> Buyer : Payment Error
+    end
+    deactivate TicketService
+    deactivate Gateway
+    deactivate Buyer
+end
+@enduml

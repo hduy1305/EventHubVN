@@ -1,0 +1,102 @@
+@startuml
+!theme plain
+actor User
+actor Admin
+participant "API Gateway" as Gateway
+participant "Auth Service" as Auth
+participant "Ticket Service" as TicketService
+participant "Event Service" as EventService
+participant "Notification Service" as Notification
+database "Ticket DB" as TicketDB
+
+group Transfer Request
+    User -> Gateway : POST /api/tickets/{ticketCode}/transfer (recipientEmail)
+    activate User
+    activate Gateway
+    Gateway -> Auth : Validate Token (User)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    
+    Gateway -> TicketService : transferTicket(ticketCode, request)
+    activate TicketService
+    
+    TicketService -> TicketDB : Find Ticket
+    activate TicketDB
+    TicketDB --> TicketService : Ticket Details
+    deactivate TicketDB
+    
+    ' Validation
+    TicketService -> Auth : userExists(recipientEmail)
+    activate Auth
+    Auth --> TicketService : true/false
+    deactivate Auth
+    
+    TicketService -> EventService : getEventById(eventId)
+    activate EventService
+    EventService --> TicketService : EventDetails
+    deactivate EventService
+    
+    TicketService -> TicketService : Validate Ticket Status (ISSUED)
+    TicketService -> TicketService : Validate Event Status (PUBLISHED)
+    
+    TicketService -> TicketDB : Save TicketTransfer (PENDING)
+    activate TicketDB
+    TicketDB --> TicketService : Saved Transfer
+    deactivate TicketDB
+    
+    TicketService -[#blue]> Notification : Event: ticket.transfer.requested
+    
+    TicketService --> Gateway : Transfer Details (PENDING)
+    deactivate TicketService
+    Gateway --> User : Transfer Initiated
+    deactivate Gateway
+    deactivate User
+end
+
+group Transfer Approval
+    Admin -> Gateway : POST /api/tickets/transfers/{transferId}/approve
+    activate Admin
+    activate Gateway
+    Gateway -> Auth : Validate Token (Admin)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    
+    Gateway -> TicketService : approveTransfer(transferId)
+    activate TicketService
+    
+    TicketService -> TicketDB : Find Transfer
+    activate TicketDB
+    TicketDB --> TicketService : Transfer Details
+    deactivate TicketDB
+    
+    TicketService -> TicketDB : Find Ticket
+    activate TicketDB
+    TicketDB --> TicketService : Ticket Details
+    deactivate TicketDB
+    
+    TicketService -> Auth : getUserIdByEmail(recipientEmail)
+    activate Auth
+    Auth --> TicketService : New User ID
+    deactivate Auth
+    
+    TicketService -> TicketDB : Update Ticket (Owner=NewUserId, Status=TRANSFERRED)
+    activate TicketDB
+    TicketDB --> TicketService : Updated
+    deactivate TicketDB
+    
+    TicketService -> TicketDB : Update Transfer Status (APPROVED)
+    activate TicketDB
+    TicketDB --> TicketService : Updated
+    deactivate TicketDB
+    
+    TicketService -[#blue]> Notification : Event: ticket.transfer.completed
+    
+    TicketService --> Gateway : Success Message
+    deactivate TicketService
+    Gateway --> Admin : HTTP 200 OK
+    deactivate Gateway
+    deactivate Admin
+end
+@enduml

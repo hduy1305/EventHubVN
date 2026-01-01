@@ -1,0 +1,135 @@
+@startuml
+!theme plain
+actor Organizer
+participant "API Gateway" as Gateway
+participant "Auth Service" as Auth
+participant "Event Service" as Event
+database "Event DB" as EventDB
+
+' --- Organizer registers and creates organization (pre-requisite for event creation) ---
+' Not explicitly in this sequence, but implicitly part of Organizer setup
+
+' --- Event Creation ---
+Organizer -> Gateway : POST /api/events (Event Details)
+activate Organizer
+activate Gateway
+Gateway -> Auth : Validate Token & Role (ORGANIZER)
+activate Auth
+Auth --> Gateway : Valid Token & Role (Organizer User ID: UUID)
+deactivate Auth
+Gateway -> Event : createEvent(Event event) (includes organizerId)
+activate Event
+Event -> EventDB : Save Event Details
+activate EventDB
+EventDB --> Event : Event Saved (Event ID)
+deactivate EventDB
+Event --> Gateway : Event Created (Event ID)
+deactivate Event
+Gateway --> Organizer : HTTP 200 OK / Event Details
+deactivate Gateway
+deactivate Organizer
+
+' --- Add Ticket Types ---
+Organizer -> Gateway : POST /api/events/{eventId}/ticket-types (TicketType Details)
+activate Organizer
+activate Gateway
+Gateway -> Auth : Validate Token & Role (ORGANIZER)
+activate Auth
+Auth --> Gateway : Valid Token & Role
+deactivate Auth
+Gateway -> Event : addTicketTypeToEvent(eventId, TicketType ticketType)
+activate Event
+Event -> EventDB : Save TicketType Details
+activate EventDB
+EventDB --> Event : TicketType Saved (TicketType ID)
+deactivate EventDB
+Event --> Gateway : TicketType Created (TicketType ID)
+deactivate Event
+Gateway --> Organizer : HTTP 200 OK / TicketType Details
+deactivate Gateway
+deactivate Organizer
+
+' --- Configure Seating ---
+Organizer -> Gateway : POST /api/events/{eventId}/seats (List<Seat> seats)
+activate Organizer
+activate Gateway
+Gateway -> Auth : Validate Token & Role (ORGANIZER)
+activate Auth
+Auth --> Gateway : Valid Token & Role
+deactivate Auth
+Gateway -> Event : addSeatsToEvent(eventId, List<Seat> seats)
+activate Event
+Event -> EventDB : Save Seat Details
+activate EventDB
+EventDB --> Event : Seats Added
+deactivate EventDB
+Event --> Gateway : Seats Added
+deactivate Event
+Gateway --> Organizer : HTTP 200 OK / Seat Details
+deactivate Gateway
+deactivate Organizer
+
+' --- Add Discount Codes ---
+Organizer -> Gateway : POST /api/events/{eventId}/discounts (Discount Details)
+activate Organizer
+activate Gateway
+Gateway -> Auth : Validate Token & Role (ORGANIZER)
+activate Auth
+Auth --> Gateway : Valid Token & Role
+deactivate Auth
+Gateway -> Event : addDiscountToEvent(eventId, Discount discount)
+activate Event
+Event -> EventDB : Save Discount Details
+activate EventDB
+EventDB --> Event : Discount Added (Discount ID)
+deactivate EventDB
+Event --> Gateway : Discount Created (Discount ID)
+deactivate Event
+Gateway --> Organizer : HTTP 200 OK / Discount Details
+deactivate Gateway
+deactivate Organizer
+
+' --- Submit for Approval ---
+Organizer -> Gateway : POST /api/events/{eventId}/submit
+activate Organizer
+activate Gateway
+Gateway -> Auth : Validate Token & Role (ORGANIZER)
+activate Auth
+Auth --> Gateway : Valid Token & Role
+deactivate Auth
+Gateway -> Event : submitForApproval(eventId)
+activate Event
+Event -> Event : Validate Status (DRAFT)
+Event -> EventDB : Update Status to PENDING_APPROVAL
+activate EventDB
+EventDB --> Event : Updated
+deactivate EventDB
+Event --> Gateway : Event Submitted
+deactivate Event
+Gateway --> Organizer : HTTP 200 OK (PENDING_APPROVAL)
+deactivate Gateway
+deactivate Organizer
+
+' --- Admin Approval ---
+actor Admin
+Admin -> Gateway : POST /api/events/{eventId}/approve
+activate Admin
+activate Gateway
+Gateway -> Auth : Validate Token & Role (ADMIN)
+activate Auth
+Auth --> Gateway : Valid Token & Role
+deactivate Auth
+Gateway -> Event : approveEvent(eventId)
+activate Event
+Event -> Event : Validate Status (PENDING_APPROVAL)
+Event -> EventDB : Update Status to PUBLISHED
+activate EventDB
+EventDB --> Event : Updated
+deactivate EventDB
+Event --> Gateway : Event Published
+deactivate Event
+Gateway --> Admin : HTTP 200 OK (PUBLISHED)
+deactivate Gateway
+deactivate Admin
+
+@enduml

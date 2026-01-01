@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+jwt:
+  secret: a3NqaGdkamFza2hkamFzaGtkaGFza2poZGFza2pqYWRza2phc2hka2pha3NqaGRqYQ==
+
+spring:
+  cloud:
+    gateway:
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+
+      routes:
+
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**, /api/organizations/**, /api/users/**, /api/admin/roles/**, /api/permissions/**
+
+
+        - id: event-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/events/**, /api/venues/**, /api/seats/**, /api/discounts/**
+
+        - id: order-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/orders/**, /api/reservations/**, /api/reports/**, /api/stats/**
+
+        - id: payment-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/payments/**
+
+        - id: ticket-service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/tickets/**, /api/marketplace/**

@@ -1,0 +1,201 @@
+@startuml
+!theme plain
+actor User
+actor Organizer
+actor Staff
+participant "API Gateway" as Gateway
+participant "Auth Service" as Auth
+participant "Event Service" as Event
+participant "Order Service" as Order
+participant "Payment Service" as Payment
+participant "Ticket Service" as TicketService
+participant "Notification Service" as Notification
+database "Event DB" as EventDB
+database "Order DB" as OrderDB
+database "Payment DB" as PaymentDB
+database "Ticket DB" as TicketDB
+
+group Event Discovery & Reservation (Attendee)
+    User -> Gateway : GET /api/events/search?category=Music
+    activate User
+    activate Gateway
+    Gateway -> Event : searchEvents(params)
+    activate Event
+    Event -> EventDB : Query events
+    EventDB --> Event : Event List
+    deactivate EventDB
+    Event --> Gateway : Event List
+    deactivate Event
+    Gateway --> User : Event List
+    deactivate Gateway
+
+    User -> Gateway : POST /api/reservations/cart (userId, eventId, ticketTypeId, quantity)
+    activate Gateway
+    Gateway -> Auth : Validate Token (User)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    Gateway -> Order : addOrUpdateCartItem(ReservationRequest)
+    activate Order
+    Order -> Event : getTicketType(ticketTypeId)
+    activate Event
+    Event --> Order : TicketType Details
+    deactivate Event
+    Order -> OrderDB : Create PENDING Reservation (with expiry)
+    activate OrderDB
+    OrderDB --> Order : Reservation ID
+    deactivate OrderDB
+    Order --> Gateway : Reservation Details
+    deactivate Order
+    Gateway --> User : Reservation ID / Cart Updated
+    deactivate Gateway
+end
+
+group Order Creation (Attendee)
+    User -> Gateway : POST /api/orders (OrderRequest: userId, eventId, reservationIds, discountCode, paymentMethod)
+    activate Gateway
+    Gateway -> Auth : Validate Token (User)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    Gateway -> Order : createOrder(OrderRequest)
+    activate Order
+    Order -> Event : validateDiscountCode(eventId, discountCode)
+    activate Event
+    Event --> Order : Discount Details (if valid)
+    deactivate Event
+    Order -> OrderDB : Convert PENDING Reservations to OrderItems, Create Order (PENDING)
+    activate OrderDB
+    OrderDB --> Order : Order Details
+    deactivate OrderDB
+    Order --> Gateway : Order Details
+    deactivate Order
+    Gateway --> User : Order Created (PENDING)
+    deactivate Gateway
+end
+
+group Payment Processing (Attendee)
+    User -> Gateway : POST /api/orders/{orderId}/initiate-payment (paymentMethod)
+    activate Gateway
+    Gateway -> Auth : Validate Token (User)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    Gateway -> Order : initiatePayment(orderId, paymentMethod)
+    activate Order
+    Order -> Payment : processPayment(PaymentRequest)
+    activate Payment
+    Payment -> PaymentDB : Record Transaction (PENDING)
+    activate PaymentDB
+    PaymentDB --> Payment : Transaction ID
+    deactivate PaymentDB
+    Payment --> Order : PaymentTransactionDto (PENDING)
+    deactivate Payment
+    Order -> OrderDB : Update Order PaymentInfo
+    activate OrderDB
+    OrderDB --> Order : PaymentInfo Updated
+    deactivate OrderDB
+    Order --> Gateway : PaymentTransactionDto (PENDING)
+    deactivate Order
+    Gateway --> User : Payment Initiated (Transaction ID)
+    deactivate Gateway
+
+    ' This part would typically be a webhook from payment gateway to Order Service
+    ' For simplicity in this E2E, we simulate direct update/callback
+    Payment -> Order : POST /api/orders/{orderId}/payment-callback (transactionId, status=SUCCESS)
+    activate Order
+    Order -> OrderDB : Update PaymentInfo Status & Order Status to PAID
+    activate OrderDB
+    OrderDB --> Order : Order Updated
+    deactivate OrderDB
+    
+    par Async Processing
+        Order -[#blue]> Notification : Event: order.paid
+        activate Notification
+        Notification -> Notification : Send Confirmation Email
+        deactivate Notification
+
+        Order -[#blue]> TicketService : Event: order.paid
+        activate TicketService
+        TicketService -> Order : GET /api/orders/{orderId}
+        activate Order
+        Order --> TicketService : OrderDetails
+        deactivate Order
+        TicketService -> TicketDB : Generate & Save Tickets (ISSUED)
+        activate TicketDB
+        TicketDB --> TicketService : Saved
+        deactivate TicketDB
+        deactivate TicketService
+    end
+    
+    Order --> Payment : Confirmation
+    deactivate Order
+end
+
+group Ticket Operations (Attendee & Staff)
+    User -> Gateway : GET /api/tickets/my-tickets
+    activate Gateway
+    Gateway -> Auth : Validate Token (User)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    Gateway -> TicketService : getTicketsForUser(userId)
+    activate TicketService
+    TicketService -> TicketDB : Query Tickets
+    activate TicketDB
+    TicketDB --> TicketService : Ticket List
+    deactivate TicketDB
+    TicketService --> Gateway : Ticket List
+    deactivate TicketService
+    Gateway --> User : Display Tickets
+    deactivate Gateway
+
+    User -> Gateway : POST /api/tickets/{ticketCode}/transfer (recipientEmail)
+    activate Gateway
+    Gateway -> Auth : Validate Token (User)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    Gateway -> TicketService : transferTicket(ticketCode, request)
+    activate TicketService
+    TicketService -> TicketDB : Create Transfer (PENDING)
+    activate TicketDB
+    TicketDB --> TicketService : Saved
+    deactivate TicketDB
+    TicketService -[#blue]> Notification : Event: ticket.transfer.requested
+    activate Notification
+    Notification -> Notification : Send Admin Email
+    deactivate Notification
+    TicketService --> Gateway : Transfer Initiated
+    deactivate TicketService
+    Gateway --> User : Transfer Pending Approval
+    deactivate Gateway
+
+    ' Admin Approval Flow (Simplified)
+    ' Admin -> TicketService : approveTransfer(transferId)
+    ' TicketService -> TicketService : Update Ticket Owner & Status
+    ' TicketService -[#blue]> Notification : Event: ticket.transfer.completed
+
+    Staff -> Gateway : POST /api/tickets/{ticketCode}/scan (gate, deviceId)
+    activate Staff
+    activate Gateway
+    Gateway -> Auth : Validate Token (Staff)
+    activate Auth
+    Auth --> Gateway : Valid
+    deactivate Auth
+    Gateway -> TicketService : scanTicket(ticketCode, gate, deviceId)
+    activate TicketService
+    TicketService -> TicketDB : Read Ticket
+    activate TicketDB
+    TicketDB --> TicketService : Ticket Details
+    deactivate TicketDB
+    TicketService -> TicketDB : Update Status (SCANNED)
+    activate TicketDB
+    TicketDB --> TicketService : Status Updated
+    deactivate TicketDB
+    TicketService --> Gateway : Scan Result
+    deactivate TicketService
+    Gateway --> Staff : Scan Confirmation
+    deactivate Gateway
+end
+@enduml

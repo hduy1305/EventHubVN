@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/auth_service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/auth_service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/auth_service.test.iml" filepath="$PROJECT_DIR$/.idea/modules/auth_service.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/event_service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/event_service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/gateway_service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/gateway_service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/order_service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/order_service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/payment_service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/payment_service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ticket-store-backend.iml" filepath="$PROJECT_DIR$/.idea/ticket-store-backend.iml" />
+    </modules>
+  </component>
+</project>

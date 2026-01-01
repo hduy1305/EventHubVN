@@ -1,0 +1,54 @@
+@startuml
+!theme plain
+hide circle
+skinparam linetype ortho
+
+entity "orders" {
+    *id : BIGINT <<PK>>
+    --
+    user_id : BINARY(16)
+    event_id : BIGINT
+    total_amount : DECIMAL(10,2)
+    currency : VARCHAR(3)
+    discount_code : VARCHAR(255)
+    payment_method : VARCHAR(50)
+    status : VARCHAR(50)
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+entity "order_items" {
+    *id : BIGINT <<PK>>
+    --
+    order_id : BIGINT <<FK>>
+    ticket_type_id : BIGINT
+    price : DECIMAL(10,2)
+}
+
+entity "payment_infos" {
+    *id : BIGINT <<PK>>
+    --
+    order_id : BIGINT <<FK>>
+    method : VARCHAR(50)
+    transaction_id : VARCHAR(255)
+    amount : DECIMAL(10,2)
+    status : VARCHAR(50)
+    paid_at : DATETIME
+}
+
+entity "reservations" {
+    *id : BIGINT <<PK>>
+    --
+    user_id : BINARY(16)
+    event_id : BIGINT
+    ticket_type_id : BIGINT
+    seat_id : BIGINT
+    quantity : INT
+    expire_at : DATETIME
+    status : VARCHAR(50)
+}
+
+orders ||..o{ order_items
+orders ||--|| payment_infos
+reservations ||..o{ orders : converts to
+@enduml

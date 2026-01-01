@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ticket-store-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ticket_store_db
+      MYSQL_USER: ticket_user
+      MYSQL_PASSWORD: ticket_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    platform: linux/amd64
+    build:
+      context: ./auth_service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticket_store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ticket_user
+      SPRING_DATASOURCE_PASSWORD: ticket_password
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  event-service:
+    platform: linux/amd64
+    build:
+      context: ./event_service
+      dockerfile: Dockerfile
+    container_name: event-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticket_store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ticket_user
+      SPRING_DATASOURCE_PASSWORD: ticket_password
+      ORDER_SERVICE_URL: http://order-service:8083 # Internal Docker network hostname
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  order-service:
+    platform: linux/amd64
+    build:
+      context: ./order_service
+      dockerfile: Dockerfile
+    container_name: order-service
+    ports:
+      - "8083:8083"
+      - "5006:5006"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticket_store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ticket_user
+      SPRING_DATASOURCE_PASSWORD: ticket_password
+      EVENT_SERVICE_URL: http://event-service:8082 # Internal Docker network hostname
+      PAYMENT_SERVICE_URL: http://payment-service:8084 # Internal Docker network hostname
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  payment-service:
+    platform: linux/amd64
+    build:
+      context: ./payment_service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - "8084:8084"
+      - "5005:5005"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticket_store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ticket_user
+      SPRING_DATASOURCE_PASSWORD: ticket_password
+      ORDER_SERVICE_URL: http://order-service:8083 # Internal Docker network hostname
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  notification-service:
+    platform: linux/amd64
+    build:
+      context: ./notification_service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - kafka
+
+  ticket-service:
+    platform: linux/amd64
+    build:
+      context: ./ticket_service
+      dockerfile: Dockerfile
+    container_name: ticket-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticket_store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ticket_user
+      SPRING_DATASOURCE_PASSWORD: ticket_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - mysql
+      - kafka
+
+  gateway-service:
+    platform: linux/amd64
+    build:
+      context: ./gateway_service
+      dockerfile: Dockerfile
+    container_name: gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # Gateway Feign URLs are defined in application-docker.yml using service names directly
+    depends_on:
+      - auth-service
+      - event-service
+      - order-service
+      - payment-service
+      - notification-service
+      - ticket-service
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    platform: linux/amd64
+    ports:
+      - "2181:2181"
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    platform: linux/amd64
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+
+volumes:
+  mysql_data:

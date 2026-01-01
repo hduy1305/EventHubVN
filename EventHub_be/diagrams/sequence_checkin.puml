@@ -1,0 +1,67 @@
+@startuml
+!theme plain
+actor Staff
+participant "API Gateway" as Gateway
+participant "Auth Service" as Auth
+participant "Ticket Service" as TicketService
+participant "Event Service" as EventService
+database "Ticket DB" as TicketDB
+
+Staff -> Gateway : POST /api/tickets/{ticketCode}/scan?gate=X&deviceId=Y
+activate Gateway
+Gateway -> Auth : Validate Token (Staff)
+activate Auth
+Auth --> Gateway : Valid (Staff ID)
+deactivate Auth
+
+Gateway -> TicketService : scanTicket(ticketCode, gate, deviceId, staffId)
+activate TicketService
+
+TicketService -> TicketDB : Find Ticket by ticketCode
+activate TicketDB
+TicketDB --> TicketService : Ticket Details (includes eventId)
+deactivate TicketDB
+
+' Authorization Check
+TicketService -> Auth : getAssignedEvents(staffId)
+activate Auth
+Auth --> TicketService : List<Long> assignedEventIds
+deactivate Auth
+
+TicketService -> EventService : getEventById(eventId)
+activate EventService
+EventService --> TicketService : EventDetails (organizerId, startTime, endTime, status)
+deactivate EventService
+
+TicketService -> TicketService : Validate Authorization (Staff assigned or Organizer)
+TicketService -> TicketService : Validate Event Status (PUBLISHED)
+TicketService -> TicketService : Validate Time (Start-15m <= Now <= End)
+
+alt Check-in Allowed
+    TicketService -> TicketService : Validate Ticket Status (ISSUED or TRANSFERRED)
+    alt Valid and Not Scanned
+        TicketService -> TicketDB : Update Status to SCANNED
+        activate TicketDB
+        TicketDB --> TicketService : Updated
+        deactivate TicketDB
+        
+        ' Note: Log creation commented out in code, but typically would happen here
+        ' TicketService -> TicketDB : Save CheckInLog
+        
+        TicketService --> Gateway : Ticket (SCANNED)
+        Gateway --> Staff : HTTP 200 OK / Scan Success
+    else Already Scanned
+        TicketService --> Gateway : Error: Ticket already scanned
+        Gateway --> Staff : HTTP 400 Bad Request
+    else Invalid Status
+        TicketService --> Gateway : Error: Invalid Ticket Status
+        Gateway --> Staff : HTTP 400 Bad Request
+    end
+else Not Authorized / Event Inactive / Wrong Time
+    TicketService --> Gateway : Error: Validation Failed
+    Gateway --> Staff : HTTP 403/400 Error
+end
+
+deactivate TicketService
+deactivate Gateway
+@enduml

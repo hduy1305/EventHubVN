@@ -1,0 +1,86 @@
+@startuml
+!theme plain
+hide circle
+skinparam linetype ortho
+
+class User {
+    UUID id
+    String email
+    String passwordHash
+    String fullName
+    String phone
+    UserStatus status
+    --
+    + createUser(...)
+    + updateUser(...)
+    + deleteUser(...)
+}
+
+class Role {
+    Long id
+    String name
+    String description
+    --
+    + createRole(...)
+    + updateRole(...)
+    + deleteRole(...)
+}
+
+class Permission {
+    Long id
+    String name
+    String description
+    --
+    + createPermission(...)
+    + updatePermission(...)
+    + deletePermission(...)
+}
+
+class Organization {
+    UUID id
+    String name
+    String description
+    String contactEmail
+    OrganizationStatus status
+    User owner
+    String cancellationPolicy
+    String refundPolicy
+    String supportedPaymentMethods
+    String feesAndTaxes
+    Timestamp createdAt
+    Timestamp updatedAt
+    --
+    + createOrganization(...)
+    + updateOrganization(...)
+    + deleteOrganization(...)
+}
+
+class UserOrganizationRole {
+    Long id
+    User user
+    Organization organization
+    Role role
+    --
+    + assignRoleToUser(...)
+    + updateRoleForUser(...)
+    + removeRoleFromUser(...)
+}
+
+User "1" -- "0..*" UserOrganizationRole
+Role "1" -- "0..*" UserOrganizationRole
+Organization "1" -- "0..*" UserOrganizationRole
+Role "1" -- "0..*" Permission : has >
+
+User "1" -- "0..*" Organization : is owner of >
+
+enum UserStatus {
+    ACTIVE
+    SUSPENDED
+    PENDING
+}
+
+enum OrganizationStatus {
+    ACTIVE
+    SUSPENDED
+}
+@enduml

@@ -1,0 +1,70 @@
+@startuml
+!theme plain
+hide circle
+skinparam linetype ortho
+
+entity "users" {
+    *id : BINARY(16) <<PK>>
+    --
+    email : VARCHAR(255) <<Unique>>
+    password_hash : VARCHAR(255)
+    full_name : VARCHAR(255)
+    phone : VARCHAR(255)
+    status : VARCHAR(50)
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+entity "roles" {
+    *id : BIGINT <<PK>>
+    --
+    name : VARCHAR(255) <<Unique>>
+    description : TEXT
+}
+
+entity "permissions" {
+    *id : BIGINT <<PK>>
+    --
+    name : VARCHAR(255) <<Unique>>
+    description : TEXT
+}
+
+entity "organizations" {
+    *id : BINARY(16) <<PK>>
+    --
+    name : VARCHAR(255)
+    description : TEXT
+    contact_email : VARCHAR(255)
+    status : VARCHAR(50)
+    owner_user_id : BINARY(16) <<FK>>
+    cancellation_policy : TEXT
+    refund_policy : TEXT
+    supported_payment_methods : VARCHAR(255)
+    fees_and_taxes : TEXT
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+entity "user_organization_roles" {
+    *id : BIGINT <<PK>>
+    --
+    user_id : BINARY(16) <<FK>>
+    organization_id : BINARY(16) <<FK>>
+    role_id : BIGINT <<FK>>
+}
+
+entity "role_permissions" {
+    *role_id : BIGINT <<FK>>
+    *permission_id : BIGINT <<FK>>
+    --
+    <<PK>>(role_id, permission_id)
+}
+
+users ||--o{ user_organization_roles
+organizations ||--o{ user_organization_roles
+roles ||--o{ user_organization_roles
+users ||--o{ organizations : owner
+
+roles ||--o{ role_permissions
+permissions ||--o{ role_permissions
+@enduml

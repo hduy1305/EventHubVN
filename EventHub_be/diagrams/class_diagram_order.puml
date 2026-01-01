@@ -1,0 +1,70 @@
+@startuml
+!theme plain
+hide circle
+skinparam linetype ortho
+
+class Order {
+    Long id
+    UUID userId
+    Long eventId
+    BigDecimal totalAmount
+    String currency
+    String discountCode
+    String paymentMethod
+    OrderStatus status
+    LocalDateTime createdAt
+    LocalDateTime updatedAt
+}
+
+class OrderItem {
+    Long id
+    Order order
+    Long ticketTypeId
+    BigDecimal price
+}
+
+class PaymentInfo {
+    Long id
+    Order order
+    String method
+    String transactionId
+    BigDecimal amount
+    PaymentStatus status
+    LocalDateTime paidAt
+}
+
+class Reservation {
+    Long id
+    UUID userId
+    Long eventId
+    Long ticketTypeId
+    Long seatId
+    Integer quantity
+    LocalDateTime expireAt
+    ReservationStatus status
+}
+
+Order "1" *-- "1..*" OrderItem
+Order "1" -- "0..1" PaymentInfo
+Reservation "1" -- "1" Order : becomes
+
+enum OrderStatus {
+    PENDING
+    PAID
+    CANCELLED
+    REFUNDED
+}
+
+enum PaymentStatus {
+    PENDING
+    SUCCESS
+    FAILED
+}
+
+enum ReservationStatus {
+    PENDING
+    CONFIRMED
+    EXPIRED
+    CANCELLED
+}
+@enduml
