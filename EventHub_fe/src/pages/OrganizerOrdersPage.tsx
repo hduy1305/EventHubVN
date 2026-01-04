@@ -188,7 +188,7 @@ const OrganizerOrdersPage: React.FC = () => {
                       User ID: {order.userId}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Total: ${order.totalAmount.toFixed(2)} {order.currency}
+                      Total: ${order.totalAmount} {order.currency}
                     </Typography>
                   </Box>
                   
@@ -222,7 +222,9 @@ const OrganizerOrdersPage: React.FC = () => {
                           variant="outlined"
                           color="error"
                           size="small"
-                          onClick={() => handleCancelOrder(order.id!, order.status!)}
+                          onClick={() => {if (!order.status) return;
+                            handleCancelOrder(order.id!,  order.status as OrderStatus);
+                          }}
                         >
                           Cancel
                         </Button>

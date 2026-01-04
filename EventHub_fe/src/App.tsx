@@ -38,6 +38,7 @@ import CheckInPage from './pages/CheckInPage';
 import AdminSupportPage from './pages/AdminSupportPage';
 import AdminContentManagementPage from './pages/AdminContentManagementPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
+import OrganizerEventDetailPage from './pages/OrganizerEventDetailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminEventApprovalPage from './pages/AdminEventApprovalPage';
 import PaymentReturnPage from './pages/PaymentReturnPage';
@@ -80,6 +81,7 @@ const AppContent: React.FC = () => {
           <Route path="/organizer/dashboard" element={<OrganizerDashboardPage />} />
           <Route path="/organizer/events/new" element={<EventWizardPage />} />
           <Route path="/organizer/events/edit/:id" element={<EventWizardPage />} />
+          <Route path="/organizer/events/:id" element={<OrganizerEventDetailPage />} />
           <Route path="/organizer/orders" element={<OrganizerOrdersPage />} />
           <Route path="/organizer/reports" element={<OrganizerReportsPage />} />
         </Route>

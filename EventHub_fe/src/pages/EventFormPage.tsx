@@ -3,9 +3,10 @@ import { Container, Grid, Card, CardContent, Typography, TextField, Button, Box,
 import { useNavigate, useParams } from 'react-router-dom';
 import { EventsService } from '../api/services/EventsService';
 import type { Event } from '../api/models/Event';
+import { EventStatus } from '../api/models/EventStatus';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import TicketTypeManagement from '../components/TicketTypeManagement';
+import TicketTypeBuilder from '../components/TicketTypeBuilder';
 import SeatManagement from '../components/SeatManagement';
 import DiscountManagement from '../components/DiscountManagement';
 
@@ -133,7 +134,7 @@ const EventFormPage: React.FC = () => {
       await EventsService.postApiEventsIdSubmit(eventId);
       showNotification('Event submitted for approval successfully!', 'success');
       // Update local state to reflect new status
-      setEventData(prev => ({ ...prev, status: 'PENDING_APPROVAL' }));
+      setEventData(prev => ({ ...prev, status: EventStatus.PENDING_APPROVAL }));
     } catch (err: any) {
       const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to submit event for approval.';
       showNotification(errorMessage, 'error');
@@ -160,12 +161,12 @@ const EventFormPage: React.FC = () => {
       <form onSubmit={handleSubmit}>
         <Grid container spacing={4}>
           {/* Event Details Section */}
-          <Grid item xs={12} md={8}>
+          <Grid item component="div" xs={12} md={8}>
             <Card sx={{ mb: 4 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Event Details</Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12}>
+                  <Grid item component="div" xs={12}>
                     <TextField
                       label="Event Name"
                       name="name"
@@ -175,7 +176,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleChange}
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid item component="div" xs={12}>
                     <TextField
                       label="Description"
                       name="description"
@@ -187,7 +188,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item component="div" xs={12} sm={6}>
                     <TextField
                       label="Category"
                       name="category"
@@ -197,7 +198,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item component="div" xs={12} sm={6}>
                     <TextField
                       label="Cover Image URL"
                       name="coverImage"
@@ -206,7 +207,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item component="div" xs={12} sm={6}>
                     <TextField
                       label="Start Time"
                       name="startTime"
@@ -218,7 +219,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item component="div" xs={12} sm={6}>
                     <TextField
                       label="End Time"
                       name="endTime"
@@ -238,7 +239,7 @@ const EventFormPage: React.FC = () => {
               <CardContent>
                 <Typography variant="h6" gutterBottom>Venue Details</Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12}>
+                  <Grid item component="div" xs={12}>
                     <TextField
                       label="Venue Name"
                       name="name"
@@ -247,7 +248,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleVenueChange}
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid item component="div" xs={12}>
                     <TextField
                       label="Address"
                       name="address"
@@ -256,7 +257,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleVenueChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item component="div" xs={12} sm={6}>
                     <TextField
                       label="City"
                       name="city"
@@ -265,7 +266,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleVenueChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item component="div" xs={12} sm={6}>
                     <TextField
                       label="Capacity"
                       name="capacity"
@@ -275,7 +276,7 @@ const EventFormPage: React.FC = () => {
                       onChange={handleVenueChange}
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid item component="div" xs={12}>
                     <TextField
                       label="Seating Chart Image URL"
                       name="mapImage"
@@ -291,7 +292,7 @@ const EventFormPage: React.FC = () => {
           </Grid>
 
           {/* Policies Section */}
-          <Grid item xs={12} md={4}>
+          <Grid item component="div" xs={12} md={4}>
             <Card sx={{ position: 'sticky', top: 24 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Policies</Typography>
@@ -338,7 +339,7 @@ const EventFormPage: React.FC = () => {
                   <Button variant="contained" type="submit" size="large" fullWidth disabled={loading}>
                     {loading ? <CircularProgress size={24} color="inherit" /> : (eventId ? 'Update Event' : 'Create Event')}
                   </Button>
-                  {eventId && eventData.status === 'DRAFT' && (
+                  {eventId && eventData.status === EventStatus.DRAFT && (
                     <Button 
                       variant="outlined" 
                       color="primary" 
@@ -362,7 +363,7 @@ const EventFormPage: React.FC = () => {
       {/* Sub-management Sections (Only visible for existing events) */}
       {eventId && (
         <Box sx={{ mt: 4 }}>
-          <TicketTypeManagement eventId={eventId} />
+          <TicketTypeBuilder eventId={eventId} eventStartTime={eventData.startTime} />
           {eventData.venue?.mapImage && (
             <Box sx={{ mt: 4 }}>
               <SeatManagement eventId={eventId} />

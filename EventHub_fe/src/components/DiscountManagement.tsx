@@ -117,28 +117,28 @@ const DiscountManagement: React.FC<DiscountManagementProps> = ({ eventId }) => {
         
         <Box component="form" onSubmit={handleAddDiscount} sx={{ mb: 4 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+            <Grid component="div" xs={12} sm={4}>
               <TextField label="Code" name="code" fullWidth required value={newDiscount.code || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid component="div" xs={12} sm={4}>
               <TextField label="Percent (%)" name="discountPercent" type="number" fullWidth inputProps={{ min: 0, max: 100 }} value={newDiscount.discountPercent || 0} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid component="div" xs={12} sm={4}>
               <TextField label="Amount ($)" name="discountAmount" type="number" fullWidth inputProps={{ min: 0, step: 0.01 }} value={newDiscount.discountAmount || 0} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid component="div" xs={12} sm={4}>
               <TextField label="Min Order ($)" name="minimumOrderAmount" type="number" fullWidth inputProps={{ min: 0, step: 0.01 }} value={newDiscount.minimumOrderAmount || 0} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid component="div" xs={12} sm={4}>
               <TextField label="Usage Limit" name="usageLimit" type="number" fullWidth inputProps={{ min: 0 }} value={newDiscount.usageLimit || 0} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Valid From" name="validFrom" type="datetime-local" fullWidth InputLabelProps={{ shrink: true }} value={newDiscount.validFrom || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Valid To" name="validTo" type="datetime-local" fullWidth InputLabelProps={{ shrink: true }} value={newDiscount.validTo || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12}>
+            <Grid component="div" xs={12}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button type="submit" variant="contained" disabled={loading || !eventId}>
                   {editingDiscountId ? 'Update' : 'Add'}

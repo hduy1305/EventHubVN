@@ -2,9 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export enum TicketStatus {
-    ISSUED = 'ISSUED',
-    SCANNED = 'SCANNED',
-    REFUNDED = 'REFUNDED',
-    TRANSFERRED = 'TRANSFERRED',
-}
+
+export const TicketStatus = {
+    ISSUED: 'ISSUED',
+    SCANNED: 'SCANNED',
+    REFUNDED: 'REFUNDED',
+    TRANSFERRED: 'TRANSFERRED',
+} as const;
+
+export type TicketStatus = typeof TicketStatus[keyof typeof TicketStatus];

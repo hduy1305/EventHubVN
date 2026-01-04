@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/discounts")
@@ -30,6 +31,21 @@ public class DiscountController {
     @PostMapping
     public ResponseEntity<Discount> create(@RequestBody Discount discount) {
         return ResponseEntity.ok(discountService.save(discount));
+    }
+
+    @PreAuthorize("hasAnyRole('ORGANIZER','ADMIN')")
+    @PostMapping("/generate/{eventId}")
+    public ResponseEntity<Discount> generatePromotionCode(
+            @PathVariable Long eventId,
+            @RequestBody Map<String, Object> request) {
+        Integer discountPercent = (Integer) request.get("discountPercent");
+        Integer usageLimit = request.get("usageLimit") != null 
+                ? ((Number) request.get("usageLimit")).intValue() : 100;
+        Integer validityDays = request.get("validityDays") != null 
+                ? ((Number) request.get("validityDays")).intValue() : 30;
+
+        Discount discount = discountService.generatePromotionCode(eventId, discountPercent, usageLimit, validityDays);
+        return ResponseEntity.ok(discount);
     }
 
     @PreAuthorize("hasAnyRole('ORGANIZER','ADMIN')")

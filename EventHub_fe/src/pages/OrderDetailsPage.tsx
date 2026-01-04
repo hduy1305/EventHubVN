@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Container, Card, CardContent, CircularProgress, Button, List, ListItem, ListItemText, Typography, Grid, Box, Alert, Chip } from '@mui/material';
 import { OrdersService } from '../api/services/OrdersService';
-import { TicketsService } from '../api/services/TicketsService';
 import type { OrderResponse } from '../api/models/OrderResponse';
 import type { TicketResponse } from '../api/models/TicketResponse';
 import type { Event } from '../api/models/Event';
@@ -45,7 +44,10 @@ const OrderDetailsPage: React.FC = () => {
     setLoading(true);
     try {
       const fetchedOrder = await OrdersService.getApiOrders(orderId);
-      if (fetchedOrder.userId !== user.id && !user.roles?.includes('ADMIN') && !user.roles?.includes('ORGANIZER')) {
+      if (
+        fetchedOrder.userId !== user.id &&
+        !user.roles?.some((role: any) => role.authority === 'ADMIN' || role.authority === 'ORGANIZER')
+      ) {
           showNotification('You are not authorized to view this order.', 'error');
           setLoading(false);
           return;
@@ -158,10 +160,10 @@ const OrderDetailsPage: React.FC = () => {
                   <Chip label={order.status} color={order.status === 'PAID' ? 'success' : 'default'} size="small" />
                 </ListItem>
                 <ListItem divider>
-                  <ListItemText primary="Total" secondary={`$${order.totalAmount.toFixed(2)} ${order.currency}`} />
+                  <ListItemText primary="Total" secondary={`$${order.totalAmount} ${order.currency}`} />
                 </ListItem>
                 <ListItem divider>
-                  <ListItemText primary="Date" secondary={new Date(order.createdAt).toLocaleDateString()} />
+                  <ListItemText primary="Date" secondary={order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ''} />
                 </ListItem>
                 <ListItem>
                   <ListItemText primary="Payment" secondary={order.paymentMethod} />

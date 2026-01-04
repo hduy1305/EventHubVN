@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
           }
-          userData.roles = extractedRoles; // Assign extracted roles
+          userData.roles = extractedRoles.map(role => ({ authority: role })); // Convert string array to object array
 
           console.log('AuthContext - Decoded Token Roles (checkAuth):', decodedToken.roles); // Re-added log
           console.log('AuthContext - Extracted Roles (checkAuth):', extractedRoles); // Re-added log
@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       }
-      loginUserData.roles = extractedRoles; // Assign extracted roles
+      loginUserData.roles = extractedRoles.map(role => ({ authority: role })); // Convert string array to object array
 
       if (Array.isArray(decodedToken.roles)) { // Log the problematic decoded roles
         console.log('AuthContext - Decoded Token Roles (login):', decodedToken.roles);

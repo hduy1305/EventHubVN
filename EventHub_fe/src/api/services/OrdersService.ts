@@ -13,6 +13,8 @@ import type { TicketResponse } from '../models/TicketResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
+import { mapOrderResponseToOrder } from '../../adapters/orderAdapter';
+
 export class OrdersService {
     /**
      * Create a new order
@@ -257,4 +259,15 @@ export class OrdersService {
             },
         });
     }
+}
+
+
+export async function getOrderById(id: number): Promise<Order> {
+  const raw = await OrdersService.getApiOrders(id);
+  return mapOrderResponseToOrder(raw);
+}
+
+export async function getOrdersByUser(userId: string): Promise<Order[]> {
+  const raws = await OrdersService.getApiOrdersUser(userId);
+  return raws.map(mapOrderResponseToOrder);
 }

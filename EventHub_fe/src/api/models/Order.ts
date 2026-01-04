@@ -14,8 +14,8 @@ export type Order = {
     discountCode?: string;
     paymentMethod?: string;
     status?: OrderStatus;
-    createdAt?: string;
-    updatedAt?: string;
+    createdAt?: Date | null;
+    updatedAt?: Date | null;
     items?: Array<OrderItem>;
     paymentInfo?: PaymentInfo;
 };

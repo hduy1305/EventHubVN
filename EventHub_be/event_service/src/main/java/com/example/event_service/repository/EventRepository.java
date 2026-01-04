@@ -53,4 +53,8 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
 
     Optional<Event> findByCustomUrl(String customUrl);
     boolean existsByCustomUrl(String customUrl);
+
+    // Filter events by organizer and status
+    java.util.List<Event> findByOrganizerIdAndStatus(java.util.UUID organizerId, Event.Status status);
+    java.util.List<Event> findByOrganizerId(java.util.UUID organizerId);
 }

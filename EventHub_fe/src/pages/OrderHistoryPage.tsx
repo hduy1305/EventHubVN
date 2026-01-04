@@ -77,8 +77,8 @@ const OrderHistoryPage: React.FC = () => {
                   </Box>
                   <Typography variant="body2" paragraph>
                     <strong>Event ID:</strong> {order.eventId}<br />
-                    <strong>Total:</strong> ${order.totalAmount.toFixed(2)} {order.currency}<br />
-                    <strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}
+                    <strong>Total:</strong> ${order.totalAmount !== undefined ? order.totalAmount.toFixed(2) : '0.00'} {order.currency}<br />
+                    <strong>Date:</strong> {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : ''}
                   </Typography>
                 </CardContent>
                 <Box sx={{ p: 2, pt: 0 }}>

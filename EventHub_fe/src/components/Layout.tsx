@@ -42,9 +42,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const userRoles = user?.roles || [];
 
-  const hasOrganizerRole = isAuthenticated && userRoles.includes('ROLE_ORGANIZER');
-  const hasAdminRole = isAuthenticated && userRoles.includes('ROLE_ADMIN');
-  const hasStaffRole = isAuthenticated && userRoles.includes('ROLE_STAFF');
+  const hasOrganizerRole = isAuthenticated && userRoles.some(role => role.authority === 'ROLE_ORGANIZER');
+  const hasAdminRole = isAuthenticated && userRoles.some(role => role.authority === 'ROLE_ADMIN');
+  const hasStaffRole = isAuthenticated && userRoles.some(role => role.authority === 'ROLE_STAFF');
 
   const hasStaffAccess = hasStaffRole || hasOrganizerRole || hasAdminRole;
 
@@ -238,7 +238,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Box component="footer" sx={{ py: 6, bgcolor: 'white', borderTop: '1px solid', borderColor: 'divider' }}>
         <Container maxWidth="lg">
           <Grid container spacing={4} justifyContent="space-between">
-            <Grid item xs={12} md={4}>
+            <Grid component="div" xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <ConfirmationNumberOutlinedIcon sx={{ mr: 1, color: 'primary.main' }} />
                 <Typography variant="h6" color="text.primary" fontWeight="bold">
@@ -250,21 +250,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 Secure, fast, and easy to use.
               </Typography>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid component="div" xs={6} md={2}>
               <Typography variant="subtitle2" color="text.primary" gutterBottom>Product</Typography>
               <Box component="ul" sx={{ p: 0, m: 0, listStyle: 'none' }}>
                 <Box component="li" sx={{ mb: 1 }}><MuiLink component={RouterLink} to="/events" color={isActive('/events') ? 'primary' : 'text.secondary'} sx={{ fontWeight: isActive('/events') ? 'bold' : 'normal' }} underline="hover">Events</MuiLink></Box>
                 <Box component="li" sx={{ mb: 1 }}><MuiLink component={RouterLink} to="/pricing" color={isActive('/pricing') ? 'primary' : 'text.secondary'} sx={{ fontWeight: isActive('/pricing') ? 'bold' : 'normal' }} underline="hover">Pricing</MuiLink></Box>
               </Box>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid component="div" xs={6} md={2}>
               <Typography variant="subtitle2" color="text.primary" gutterBottom>Company</Typography>
               <Box component="ul" sx={{ p: 0, m: 0, listStyle: 'none' }}>
                 <Box component="li" sx={{ mb: 1 }}><MuiLink component={RouterLink} to="/about" color={isActive('/about') ? 'primary' : 'text.secondary'} sx={{ fontWeight: isActive('/about') ? 'bold' : 'normal' }} underline="hover">About</MuiLink></Box>
                 <Box component="li" sx={{ mb: 1 }}><MuiLink component={RouterLink} to="/careers" color={isActive('/careers') ? 'primary' : 'text.secondary'} sx={{ fontWeight: isActive('/careers') ? 'bold' : 'normal' }} underline="hover">Careers</MuiLink></Box>
               </Box>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid component="div" xs={6} md={2}>
               <Typography variant="subtitle2" color="text.primary" gutterBottom>Legal</Typography>
               <Box component="ul" sx={{ p: 0, m: 0, listStyle: 'none' }}>
                 <Box component="li" sx={{ mb: 1 }}><MuiLink component={RouterLink} to="/terms" color={isActive('/terms') ? 'primary' : 'text.secondary'} sx={{ fontWeight: isActive('/terms') ? 'bold' : 'normal' }} underline="hover">Terms</MuiLink></Box>

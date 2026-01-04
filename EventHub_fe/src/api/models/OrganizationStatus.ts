@@ -2,7 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export enum OrganizationStatus {
-    ACTIVE = 'ACTIVE',
-    SUSPENDED = 'SUSPENDED',
-}
+
+export const OrganizationStatus = {
+    ACTIVE: 'ACTIVE',
+    SUSPENDED: 'SUSPENDED',
+} as const;
+
+export type OrganizationStatus = typeof OrganizationStatus[keyof typeof OrganizationStatus];

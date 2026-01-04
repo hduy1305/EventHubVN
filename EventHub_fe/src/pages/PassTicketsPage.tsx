@@ -134,10 +134,10 @@ const PassTicketsPage: React.FC = () => {
       <Typography variant="h6" sx={{ mb: 2 }}>Marketplace</Typography>
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {activeListings.length === 0 ? (
-          <Grid item xs={12}><Typography>No active listings.</Typography></Grid>
+          <Grid item component="div" xs={12}><Typography>No active listings.</Typography></Grid>
         ) : (
           activeListings.map(listing => (
-            <Grid item xs={12} sm={6} md={4} key={listing.id}>
+            <Grid item component="div" xs={12} sm={6} md={4} key={listing.id}>
               <ListingCard listing={listing} />
             </Grid>
           ))
@@ -149,10 +149,10 @@ const PassTicketsPage: React.FC = () => {
       <Typography variant="h6" sx={{ mb: 2 }}>My Listings</Typography>
       <Grid container spacing={3}>
         {myListings.length === 0 ? (
-          <Grid item xs={12}><Typography>You have no tickets posted.</Typography></Grid>
+          <Grid item component="div" xs={12}><Typography>You have no tickets posted.</Typography></Grid>
         ) : (
           myListings.map(listing => (
-            <Grid item xs={12} sm={6} md={4} key={listing.id}>
+            <Grid item component="div" xs={12} sm={6} md={4} key={listing.id}>
               <ListingCard listing={listing} />
             </Grid>
           ))

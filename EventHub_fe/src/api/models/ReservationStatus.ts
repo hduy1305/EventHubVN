@@ -2,9 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export enum ReservationStatus {
-    PENDING = 'PENDING',
-    CONFIRMED = 'CONFIRMED',
-    EXPIRED = 'EXPIRED',
-    CANCELLED = 'CANCELLED',
-}
+
+export const ReservationStatus = {
+    PENDING: 'PENDING',
+    CONFIRMED: 'CONFIRMED',
+    EXPIRED: 'EXPIRED',
+    CANCELLED: 'CANCELLED',
+} as const;
+
+export type ReservationStatus = typeof ReservationStatus[keyof typeof ReservationStatus];

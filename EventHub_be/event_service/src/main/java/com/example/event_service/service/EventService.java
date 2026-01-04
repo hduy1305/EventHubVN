@@ -63,6 +63,24 @@ public class EventService {
         return eventRepository.findByStatus(status);
     }
 
+    public List<Event> getEventsByOrganizerAndStatus(String organizerId, Event.Status status) {
+        try {
+            java.util.UUID orgUuid = organizerId == null ? null : java.util.UUID.fromString(organizerId);
+            return eventRepository.findByOrganizerIdAndStatus(orgUuid, status);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid organizerId format", e);
+        }
+    }
+
+    public List<Event> getEventsByOrganizer(String organizerId) {
+        try {
+            java.util.UUID orgUuid = organizerId == null ? null : java.util.UUID.fromString(organizerId);
+            return eventRepository.findByOrganizerId(orgUuid);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid organizerId format", e);
+        }
+    }
+
     public Event getById(Long id) {
         return eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Event not found"));

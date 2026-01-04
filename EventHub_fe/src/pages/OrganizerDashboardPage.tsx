@@ -1,9 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Grid, Card, CardContent, CardMedia, Button, Typography, Box, CircularProgress, CardActions, TextField, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import {
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  Button,
+  Typography,
+  Box,
+  CircularProgress,
+  CardActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Chip,
+  Tabs,
+  Tab,
+  CardHeader,
+} from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { EventsService } from '../api/services/EventsService';
 import type { Event } from '../api/models/Event';
-import { EventStatus } from '../api/models/EventStatus';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { UsersService } from '../api/services/UsersService';
@@ -11,20 +30,63 @@ import { OrganizationService } from '../api/services/OrganizationService';
 import AddIcon from '@mui/icons-material/Add';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import { motion } from 'framer-motion';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`event-tabpanel-${index}`}
+      aria-labelledby={`event-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+    </div>
+  );
+}
 
 const OrganizerDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [events, setEvents] = useState<Event[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [tabValue, setTabValue] = useState(0);
   const [staffEmail, setStaffEmail] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<number | ''>('');
   const [staffLoading, setStaffLoading] = useState(false);
 
+  // Status types
+  const statuses = ['DRAFT', 'PENDING_APPROVAL', 'PUBLISHED', 'CANCELLED'];
+  const statusColors: { [key: string]: 'default' | 'warning' | 'success' | 'error' } = {
+    DRAFT: 'default',
+    PENDING_APPROVAL: 'warning',
+    PUBLISHED: 'success',
+    CANCELLED: 'error',
+  };
+
   useEffect(() => {
     fetchOrganizerEvents();
-  }, [user, showNotification]);
+  }, [user]);
+
+  useEffect(() => {
+    // Filter events based on selected tab
+    if (tabValue === 0) {
+      setFilteredEvents(events);
+    } else {
+      const status = statuses[tabValue - 1];
+      setFilteredEvents(events.filter(e => e.status === status));
+    }
+  }, [tabValue, events]);
 
   const fetchOrganizerEvents = async () => {
     if (!user?.id) {
@@ -35,10 +97,11 @@ const OrganizerDashboardPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await EventsService.getApiEventsSearch(undefined, undefined, undefined, undefined, undefined, undefined, EventStatus.PUBLISHED);
+      // Fetch all events and filter by organizerId
+      const response = await EventsService.getApiEventsSearch(undefined, undefined, undefined, undefined, undefined, undefined, undefined);
       const allEvents = response.content || [];
-      const organizerEvents = allEvents.filter(event => event.organizerId === user.id);
-      setEvents(organizerEvents);
+      const organizerManagedEvents = allEvents.filter(event => event.organizerId === user.id);
+      setEvents(organizerManagedEvents);
     } catch (err: any) {
       const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch your events.';
       showNotification(errorMessage, 'error');
@@ -59,7 +122,6 @@ const OrganizerDashboardPage: React.FC = () => {
     } catch (err: any) {
       const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to delete event.';
       showNotification(errorMessage, 'error');
-      console.error("Failed to delete event:", err);
     }
   };
 
@@ -79,6 +141,7 @@ const OrganizerDashboardPage: React.FC = () => {
       const userId = await UsersService.getApiUsersIdByEmail(staffEmail.trim());
       await OrganizationService.postApiOrganizationsUsersRolesByName(organizerOrgId, userId, 'STAFF');
       showNotification('Staff role granted successfully.', 'success');
+      setStaffEmail('');
     } catch (err: any) {
       const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to grant staff role.';
       showNotification(errorMessage, 'error');
@@ -101,6 +164,8 @@ const OrganizerDashboardPage: React.FC = () => {
       const userId = await UsersService.getApiUsersIdByEmail(staffEmail.trim());
       await UsersService.postApiUsersAssignedEvents(userId, Number(selectedEventId));
       showNotification('Staff assigned to event successfully.', 'success');
+      setStaffEmail('');
+      setSelectedEventId('');
     } catch (err: any) {
       const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to assign staff to event.';
       showNotification(errorMessage, 'error');
@@ -118,7 +183,8 @@ const OrganizerDashboardPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" fontWeight={700}>Organizer Dashboard</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
@@ -134,6 +200,7 @@ const OrganizerDashboardPage: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Staff Management Card */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>Staff Management</Typography>
@@ -142,80 +209,232 @@ const OrganizerDashboardPage: React.FC = () => {
               label="User Email"
               value={staffEmail}
               onChange={e => setStaffEmail(e.target.value)}
+              size="small"
             />
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small">
               <InputLabel>Assign to Event</InputLabel>
               <Select
                 label="Assign to Event"
                 value={selectedEventId}
-                onChange={e => setSelectedEventId(Number(e.target.value))}
+                onChange={e => setSelectedEventId(e.target.value as number | '')}
               >
                 {events.map(event => (
-                  <MenuItem key={event.id} value={event.id}>{event.name}</MenuItem>
+                  <MenuItem key={event.id} value={event.id}>
+                    {event.name}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
-            <Button variant="outlined" onClick={handleGrantStaffRole} disabled={staffLoading}>
-              Grant Staff Role
+            <Button
+              onClick={handleGrantStaffRole}
+              variant="contained"
+              disabled={staffLoading}
+            >
+              Grant Role
             </Button>
-            <Button variant="contained" onClick={handleAssignStaffToEvent} disabled={staffLoading}>
-              Assign to Event
+            <Button
+              onClick={handleAssignStaffToEvent}
+              variant="contained"
+              color="info"
+              disabled={staffLoading}
+            >
+              Assign
             </Button>
           </Box>
         </CardContent>
       </Card>
 
-      {events.length === 0 ? (
-        <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            You haven't created any events yet.
-          </Typography>
-          <Button component={RouterLink} to="/organizer/events/new" variant="contained" sx={{ mt: 2 }}>
-            Create Your First Event
-          </Button>
-        </Container>
-      ) : (
-        <Grid container spacing={4}>
-          {events.map((event, index) => (
-            <Grid item xs={12} sm={6} md={4} key={event.id}>
-              <Card 
-                component={motion.div}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-              >
-                {event.coverImage && (
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={event.coverImage}
-                    alt={event.name}
-                  />
-                )}
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h6" component="div" noWrap>
-                    {event.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {event.category}
-                  </Typography>
-                  <Typography variant="caption" display="block" color="text.secondary">
-                    {new Date(event.startTime).toLocaleDateString()} - {new Date(event.endTime).toLocaleDateString()}
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-                  <Box>
-                    <Button size="small" component={RouterLink} to={`/organizer/events/edit/${event.id}`}>Edit</Button>
-                    <Button size="small" component={RouterLink} to={`/events/${event.id}`}>View</Button>
-                  </Box>
-                  <Button size="small" color="error" onClick={() => handleDeleteEvent(event.id!)}>Delete</Button>
-                </CardActions>
-              </Card>
+      {/* Events by Status */}
+      <Card>
+        <CardHeader title="My Events" />
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs
+            value={tabValue}
+            onChange={(_, newValue) => setTabValue(newValue)}
+            aria-label="event status tabs"
+          >
+            <Tab label={`All (${events.length})`} />
+            {statuses.map((status) => {
+              const count = events.filter(e => e.status === status).length;
+              return (
+                <Tab
+                  key={status}
+                  label={`${status} (${count})`}
+                />
+              );
+            })}
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          {events.length === 0 ? (
+            <Typography color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>
+              No events created yet.
+            </Typography>
+          ) : (
+            <Grid container spacing={3}>
+              {events.map((event) => (
+                <Grid item xs={12} sm={6} md={4} key={event.id}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Card
+                      sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: 4,
+                        },
+                      }}
+                    >
+                      {event.coverImage && (
+                        <CardMedia
+                          component="img"
+                          height="200"
+                          image={event.coverImage}
+                          alt={event.name}
+                        />
+                      )}
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                          <Chip
+                            label={event.status}
+                            color={statusColors[event.status!] || 'default'}
+                            size="small"
+                          />
+                          {event.status === 'PUBLISHED' && (
+                            <Chip
+                              label="Promotion Available"
+                              icon={<ConfirmationNumberIcon />}
+                              variant="outlined"
+                              size="small"
+                              color="success"
+                            />
+                          )}
+                        </Box>
+                        <Typography gutterBottom variant="h6" component="div">
+                          {event.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {event.category}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {event.venue?.name}, {event.venue?.city}
+                        </Typography>
+                      </CardContent>
+                      <CardActions sx={{ pt: 0 }}>
+                        <Button size="small" component={RouterLink} to={`/organizer/events/${event.id}`}>
+                          View
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteEvent(event.id!)}
+                        >
+                          Delete
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </motion.div>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-      )}
+          )}
+        </TabPanel>
+
+        {statuses.map((status, statusIndex) => (
+          <TabPanel key={status} value={tabValue} index={statusIndex + 1}>
+            {filteredEvents.length === 0 ? (
+              <Typography color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>
+                No events with status "{status}".
+              </Typography>
+            ) : (
+              <Grid container spacing={3}>
+                {filteredEvents.map((event) => (
+                  <Grid item xs={12} sm={6} md={4} key={event.id}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: 4,
+                          },
+                        }}
+                      >
+                        {event.coverImage && (
+                          <CardMedia
+                            component="img"
+                            height="200"
+                            image={event.coverImage}
+                            alt={event.name}
+                          />
+                        )}
+                        <CardContent sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                            <Chip
+                              label={event.status}
+                              color={statusColors[event.status!] || 'default'}
+                              size="small"
+                            />
+                            {event.status === 'PUBLISHED' && (
+                              <Chip
+                                label="Promotion Available"
+                                icon={<ConfirmationNumberIcon />}
+                                variant="outlined"
+                                size="small"
+                                color="success"
+                              />
+                            )}
+                          </Box>
+                          <Typography gutterBottom variant="h6" component="div">
+                            {event.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {event.category}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {event.venue?.name}, {event.venue?.city}
+                          </Typography>
+                        </CardContent>
+                        <CardActions sx={{ pt: 0 }}>
+                          <Button size="small" component={RouterLink} to={`/organizer/events/${event.id}`}>
+                            View
+                          </Button>
+                          {event.status === 'PUBLISHED' && (
+                            <Button size="small" color="success" component={RouterLink} to={`/organizer/promotions/${event.id}`}>
+                              Promotions
+                            </Button>
+                          )}
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteEvent(event.id!)}
+                          >
+                            Delete
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </motion.div>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </TabPanel>
+        ))}
+      </Card>
     </Container>
   );
 };

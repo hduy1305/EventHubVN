@@ -21,7 +21,7 @@ const AdminSupportPage: React.FC = () => {
       <Typography variant="h4" gutterBottom fontWeight={700}>Support Center</Typography>
       
       <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
+        <Grid component="div" xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -35,7 +35,7 @@ const AdminSupportPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid component="div" xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

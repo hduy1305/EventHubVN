@@ -43,7 +43,7 @@ const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     const roles = user?.roles || [];
-    const isAdmin = roles.includes('ROLE_ADMIN') || roles.includes('ADMIN');
+    const isAdmin = roles.some((role: any) => role.authority === 'ADMIN' || role.authority === 'ROLE_ADMIN');
     if (!isAdmin) {
       showNotification('You are not authorized to access this page.', 'error');
       setLoading(false);
@@ -367,7 +367,7 @@ const AdminDashboardPage: React.FC = () => {
       </Card>
 
       <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
+        <Grid component="div" xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Global Payment Methods</Typography>
@@ -397,12 +397,12 @@ const AdminDashboardPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid component="div" xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Global Fees & Policies</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid component="div" xs={6}>
                   <TextField
                     label="Service Fee (%)"
                     type="number"
@@ -411,7 +411,7 @@ const AdminDashboardPage: React.FC = () => {
                     onChange={(e) => setGlobalServiceFee(parseFloat(e.target.value) / 100)}
                   />
                 </Grid>
-                <Grid item xs={6}>
+                <Grid component="div" xs={6}>
                   <TextField
                     label="Tax Rate (%)"
                     type="number"
@@ -420,7 +420,7 @@ const AdminDashboardPage: React.FC = () => {
                     onChange={(e) => setGlobalTaxRate(parseFloat(e.target.value) / 100)}
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid component="div" xs={12}>
                   <TextField
                     label="Refund Policy"
                     multiline

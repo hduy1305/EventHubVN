@@ -26,7 +26,7 @@ const AdminContentManagementPage: React.FC = () => {
       <Typography variant="h4" gutterBottom fontWeight={700}>Content Management</Typography>
 
       <Grid container spacing={4}>
-        <Grid item xs={12}>
+        <Grid component="div" xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Terms and Conditions</Typography>
@@ -44,7 +44,7 @@ const AdminContentManagementPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid component="div" xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Privacy Policy</Typography>
@@ -62,7 +62,7 @@ const AdminContentManagementPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid component="div" xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>About Us</Typography>

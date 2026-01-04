@@ -18,7 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.some(role => user?.roles?.includes(role))) {
+  if (allowedRoles && !allowedRoles.some(role => user?.roles?.some(userRole => userRole.authority === role))) {
     // Redirect to an unauthorized page or home if authenticated but not authorized
     return <Navigate to="/" replace />; // TODO: Create a proper unauthorized page
   }

@@ -87,7 +87,7 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
     setLoading(true);
     try {
       if (editingSeatId) {
-        await EventsService.putApiEventsSeatAvailability(editingSeatId, newSeat.isAvailable || false);
+        await EventsService.putApiEventsSeatsAvailability(editingSeatId, newSeat.isAvailable || false);
         showNotification('Seat availability updated successfully!', 'success');
       } else {
         const seatToAdd = {
@@ -128,7 +128,7 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
     }
     setLoading(true);
     try {
-      await EventsService.putApiEventsSeatAvailability(seatId, false);
+      await EventsService.putApiEventsSeatsAvailability(seatId, false);
       showNotification('Seat marked as unavailable successfully (simulated delete)!', 'success');
       fetchSeatsAndTicketTypes();
     } catch (err: any) {
@@ -146,19 +146,19 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
         
         <Box component="form" onSubmit={handleAddSeat} sx={{ mb: 4 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={3}>
+            <Grid component="div" xs={12} sm={3}>
               <TextField label="Section" name="section" fullWidth required value={newSeat.section || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid component="div" xs={12} sm={3}>
               <TextField label="Row" name="rowLabel" fullWidth required value={newSeat.rowLabel || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid component="div" xs={12} sm={3}>
               <TextField label="Number" name="seatNumber" fullWidth required value={newSeat.seatNumber || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid component="div" xs={12} sm={3}>
               <TextField label="Category" name="seatCategory" fullWidth value={newSeat.seatCategory || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField
                 select
                 label="Ticket Type"
@@ -173,7 +173,7 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <FormGroup row>
                 <FormControlLabel
                   control={<Checkbox checked={newSeat.isAvailable || false} onChange={handleCheckboxChange} name="isAvailable" />}
@@ -185,7 +185,7 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
                 />
               </FormGroup>
             </Grid>
-            <Grid item xs={12}>
+            <Grid component="div" xs={12}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button type="submit" variant="contained" disabled={loading || !eventId}>
                   {editingSeatId ? 'Update' : 'Add'}

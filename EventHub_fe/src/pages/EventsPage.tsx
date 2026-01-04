@@ -131,7 +131,7 @@ const EventsPage: React.FC = () => {
       >
         <form onSubmit={handleSearchSubmit}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid item component="div" xs={12} md={4}>
               <TextField
                 fullWidth
                 placeholder="Search events, artists..."
@@ -147,7 +147,7 @@ const EventsPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid item component="div" xs={12} sm={6} md={2}>
               <FormControl fullWidth variant="outlined">
                 <InputLabel>Category</InputLabel>
                 <Select
@@ -160,7 +160,7 @@ const EventsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid item component="div" xs={12} sm={6} md={2}>
               <FormControl fullWidth variant="outlined">
                 <InputLabel>Location</InputLabel>
                 <Select
@@ -173,7 +173,7 @@ const EventsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6} md={1.5}>
+            <Grid item component="div" xs={6} md={1.5}>
               <TextField
                 fullWidth
                 label="Min $"
@@ -184,7 +184,7 @@ const EventsPage: React.FC = () => {
                 onChange={(e) => setMinPrice(e.target.value)}
               />
             </Grid>
-            <Grid item xs={6} md={1.5}>
+            <Grid item component="div" xs={6} md={1.5}>
               <TextField
                 fullWidth
                 label="Max $"
@@ -195,7 +195,7 @@ const EventsPage: React.FC = () => {
                 onChange={(e) => setMaxPrice(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} md={1} sx={{ display: 'flex', gap: 1 }}>
+            <Grid item component="div" xs={12} md={1} sx={{ display: 'flex', gap: 1 }}>
               <Button type="submit" variant="contained" color="primary" fullWidth sx={{ height: '56px' }}>
                 Go
               </Button>
@@ -218,7 +218,7 @@ const EventsPage: React.FC = () => {
         <>
           <Grid container spacing={4}>
             {events.length === 0 ? (
-              <Grid item xs={12}>
+              <Grid item component="div" xs={12}>
                 <Box sx={{ textAlign: 'center', py: 8, bgcolor: 'background.default', borderRadius: 2 }}>
                   <Typography variant="h6" color="text.secondary">No events found matching your criteria.</Typography>
                   <Button onClick={handleClearFilters} sx={{ mt: 2 }}>Clear All Filters</Button>
@@ -226,7 +226,7 @@ const EventsPage: React.FC = () => {
               </Grid>
             ) : (
               events.map((event, index) => (
-                <Grid item xs={12} sm={6} md={4} key={event.id}>
+                <Grid item component="div" xs={12} sm={6} md={4} key={event.id}>
                   <Card
                     component={motion.div}
                     initial={{ opacity: 0, y: 20 }}

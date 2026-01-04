@@ -13,11 +13,12 @@ export type PaymentTransaction = {
     updatedAt?: string;
 };
 export namespace PaymentTransaction {
-    export enum status {
-        PENDING = 'PENDING',
-        SUCCESS = 'SUCCESS',
-        FAILED = 'FAILED',
-        REFUNDED = 'REFUNDED',
-    }
+    export const status = {
+        PENDING: 'PENDING',
+        SUCCESS: 'SUCCESS',
+        FAILED: 'FAILED',
+        REFUNDED: 'REFUNDED',
+    } as const;
+    export type status = typeof status[keyof typeof status];
 }
 

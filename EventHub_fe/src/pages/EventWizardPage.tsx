@@ -211,7 +211,11 @@ const EventWizardInner: React.FC = () => {
       const suffix = user.id.replace(/-/g, '').slice(0, 6).toUpperCase();
       dispatch({ type: 'UPDATE_ORGANIZER_INFO', payload: { organizerCode: `ORG-${suffix}` } });
     }
-  }, [dispatch, state.basicInfo.eventCode, state.organizerInfo.organizerCode, user?.id, id]);
+    // Đảm bảo category luôn có giá trị hợp lệ
+    if (!id && (!state.basicInfo.category || !categories.includes(state.basicInfo.category))) {
+      dispatch({ type: 'UPDATE_BASIC_INFO', payload: { category: categories[0] } });
+    }
+  }, [dispatch, state.basicInfo.eventCode, state.organizerInfo.organizerCode, state.basicInfo.category, user?.id, id]);
 
   const isOnline = state.basicInfo.category.toLowerCase() === 'online';
 
@@ -508,8 +512,13 @@ const EventWizardInner: React.FC = () => {
                   <InputLabel>Category</InputLabel>
                   <Select
                     label="Category"
-                    value={state.basicInfo.category}
-                    onChange={e => dispatch({ type: 'UPDATE_BASIC_INFO', payload: { category: e.target.value } })}
+                    value={state.basicInfo.category && categories.includes(state.basicInfo.category) ? state.basicInfo.category : categories[0]}
+                    onChange={e => {
+                      const value = e.target.value;
+                      if (categories.includes(value)) {
+                        dispatch({ type: 'UPDATE_BASIC_INFO', payload: { category: value } });
+                      }
+                    }}
                   >
                     {categories.map(category => (
                       <MenuItem key={category} value={category}>{category}</MenuItem>
@@ -669,20 +678,21 @@ const EventWizardInner: React.FC = () => {
       )}
 
       {activeStep === 2 && (
-        <Box sx={{ display: 'grid', gap: 3 }}>
+        <Box sx={{ display: 'grid', gap: 3, overflowX: 'auto' }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Showtimes</Typography>
               <Button onClick={() => dispatch({ type: 'SET_SHOWTIMES', payload: [...state.showtimes, createShowtime()] })}>
                 Add Showtime
               </Button>
-              <Table size="small">
+              <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small" sx={{ minWidth: 600 }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Showtime Code</TableCell>
-                    <TableCell>Start Time</TableCell>
-                    <TableCell>End Time</TableCell>
-                    <TableCell>Action</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Showtime Code</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>Start Time</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>End Time</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -693,6 +703,7 @@ const EventWizardInner: React.FC = () => {
                         <TextField
                           type="datetime-local"
                           size="small"
+                          fullWidth
                           value={showtime.startTime}
                           onChange={e => {
                             const next = [...state.showtimes];
@@ -706,6 +717,7 @@ const EventWizardInner: React.FC = () => {
                         <TextField
                           type="datetime-local"
                           size="small"
+                          fullWidth
                           value={showtime.endTime}
                           onChange={e => {
                             const next = [...state.showtimes];
@@ -730,6 +742,7 @@ const EventWizardInner: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              </Box>
             </CardContent>
           </Card>
 
@@ -739,17 +752,18 @@ const EventWizardInner: React.FC = () => {
               <Button onClick={() => dispatch({ type: 'SET_TICKET_TYPES', payload: [...state.ticketTypes, createTicketType()] })}>
                 Add Ticket Type
               </Button>
-              <Table size="small">
+              <Box sx={{ overflowX: 'auto' }}>
+              <Table size="small" sx={{ minWidth: 900 }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Type Code</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>Max Quantity</TableCell>
-                    <TableCell>Sale Start</TableCell>
-                    <TableCell>Sale End</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Action</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Type Code</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Name</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Price</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Max Qty</TableCell>
+                    <TableCell sx={{ minWidth: 160 }}>Sale Start</TableCell>
+                    <TableCell sx={{ minWidth: 160 }}>Sale End</TableCell>
+                    <TableCell sx={{ minWidth: 130 }}>Description</TableCell>
+                    <TableCell sx={{ minWidth: 80 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -759,6 +773,7 @@ const EventWizardInner: React.FC = () => {
                       <TableCell>
                         <TextField
                           size="small"
+                          fullWidth
                           value={ticketType.name}
                           onChange={e => {
                             const next = [...state.ticketTypes];
@@ -771,6 +786,7 @@ const EventWizardInner: React.FC = () => {
                         <TextField
                           type="number"
                           size="small"
+                          fullWidth
                           value={ticketType.price}
                           onChange={e => {
                             const next = [...state.ticketTypes];
@@ -783,6 +799,7 @@ const EventWizardInner: React.FC = () => {
                         <TextField
                           type="number"
                           size="small"
+                          fullWidth
                           value={ticketType.maxQuantity}
                           onChange={e => {
                             const next = [...state.ticketTypes];
@@ -795,6 +812,7 @@ const EventWizardInner: React.FC = () => {
                         <TextField
                           type="datetime-local"
                           size="small"
+                          fullWidth
                           value={ticketType.saleStart}
                           onChange={e => {
                             const next = [...state.ticketTypes];
@@ -808,6 +826,7 @@ const EventWizardInner: React.FC = () => {
                         <TextField
                           type="datetime-local"
                           size="small"
+                          fullWidth
                           value={ticketType.saleEnd}
                           onChange={e => {
                             const next = [...state.ticketTypes];
@@ -820,6 +839,7 @@ const EventWizardInner: React.FC = () => {
                       <TableCell>
                         <TextField
                           size="small"
+                          fullWidth
                           value={ticketType.description}
                           onChange={e => {
                             const next = [...state.ticketTypes];
@@ -843,6 +863,7 @@ const EventWizardInner: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              </Box>
             </CardContent>
           </Card>
         </Box>

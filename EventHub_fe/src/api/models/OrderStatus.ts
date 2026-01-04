@@ -2,9 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export enum OrderStatus {
-    PENDING = 'PENDING',
-    PAID = 'PAID',
-    CANCELLED = 'CANCELLED',
-    REFUNDED = 'REFUNDED',
-}
+
+export const OrderStatus = {
+    PENDING: 'PENDING',
+    PAID: 'PAID',
+    CANCELLED: 'CANCELLED',
+    REFUNDED: 'REFUNDED',
+} as const;
+
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];

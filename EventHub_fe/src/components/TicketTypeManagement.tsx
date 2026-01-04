@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, Grid, Card, CardContent, Typography, List, ListItem, IconButton, Box } from '@mui/material';
+import { TextField, Button, Card, CardContent, Typography, List, ListItem, IconButton, Box } from '@mui/material';
 import { EventsService } from '../api/services/EventsService';
 import type { TicketType } from '../api/models/TicketType';
 import { useNotification } from '../context/NotificationContext';
 import DeleteIcon from '@mui/icons-material/Delete';
+import Grid from '@mui/material/Grid';
 import EditIcon from '@mui/icons-material/Edit';
 
 interface TicketTypeManagementProps {
@@ -116,25 +117,25 @@ const TicketTypeManagement: React.FC<TicketTypeManagementProps> = ({ eventId }) 
         
         <Box component="form" onSubmit={handleAddTicketType} sx={{ mb: 4 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Name" name="name" fullWidth required value={newTicketType.name || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Price" name="price" type="number" fullWidth required inputProps={{ min: 0, step: 0.01 }} value={newTicketType.price || 0} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Quota" name="quota" type="number" fullWidth required inputProps={{ min: 0 }} value={newTicketType.quota || 0} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Purchase Limit" name="purchaseLimit" type="number" fullWidth required inputProps={{ min: 1 }} value={newTicketType.purchaseLimit || 1} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Sale Start" name="startSale" type="datetime-local" fullWidth InputLabelProps={{ shrink: true }} value={newTicketType.startSale || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid component="div" xs={12} sm={6}>
               <TextField label="Sale End" name="endSale" type="datetime-local" fullWidth InputLabelProps={{ shrink: true }} value={newTicketType.endSale || ''} onChange={handleChange} />
             </Grid>
-            <Grid item xs={12}>
+            <Grid component="div" xs={12}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button type="submit" variant="contained" disabled={loading || !eventId}>
                   {editingTicketTypeId ? 'Update' : 'Add'}
@@ -167,7 +168,7 @@ const TicketTypeManagement: React.FC<TicketTypeManagementProps> = ({ eventId }) 
               }
             >
               <Box>
-                <Typography variant="subtitle1">{type.name} - ${type.price.toFixed(2)}</Typography>
+                <Typography variant="subtitle1">{type.name} - ${(type.price || 0).toFixed(2)}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Quota: {type.quota} | Limit: {type.purchaseLimit}
                 </Typography>
