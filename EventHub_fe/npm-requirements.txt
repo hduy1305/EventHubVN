@@ -1,0 +1,10 @@
+# EventHub Frontend - NPM Installation
+
+```bash
+npm install
+npm install chart
+npm install html5-qrcode
+```
+
+Done! ✅
+
