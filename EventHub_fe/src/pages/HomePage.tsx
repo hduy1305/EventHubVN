@@ -248,7 +248,7 @@ const HomePage: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
           <Tabs
             value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
+            onChange={(_e, newValue) => setActiveTab(newValue)}
             indicatorColor="primary"
             textColor="primary"
           >
@@ -319,7 +319,7 @@ const HomePage: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'text.secondary' }}>
                       <CalendarTodayIcon sx={{ fontSize: 16, mr: 1 }} />
                       <Typography variant="body2">
-                        {new Date(event.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {event.startTime ? new Date(event.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBA'}
                       </Typography>
                     </Box>
                     

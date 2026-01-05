@@ -50,14 +50,6 @@ const ProfilePage: React.FC = () => {
               </ListItemIcon>
               <ListItemText primary="Email Address" secondary={user.email || 'N/A'} />
             </ListItem>
-            {user.phone && (
-              <ListItem sx={{ px: 0 }}>
-                <ListItemIcon>
-                  <PhoneAndroidOutlinedIcon color="action" />
-                </ListItemIcon>
-                <ListItemText primary="Phone Number" secondary={user.phone} />
-              </ListItem>
-            )}
             <ListItem sx={{ px: 0 }}>
               <ListItemIcon>
                 <AdminPanelSettingsOutlinedIcon color="action" />
@@ -68,14 +60,17 @@ const ProfilePage: React.FC = () => {
                   user.roles && user.roles.length > 0 
                   ? (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                      {user.roles.map((role, index) => (
-                        <Chip 
-                          key={index} 
-                          label={role.replace('ROLE_', '')} // Display without ROLE_ prefix
-                          color={role === 'ROLE_ADMIN' ? 'error' : role === 'ROLE_ORGANIZER' ? 'primary' : role === 'ROLE_STAFF' ? 'info' : 'default'} 
-                          size="small" 
-                        />
-                      ))}
+                      {user.roles.map((role, index) => {
+                        const authority = (role as any).authority || role;
+                        return (
+                          <Chip 
+                            key={index} 
+                            label={authority.replace('ROLE_', '')}
+                            color={authority === 'ROLE_ADMIN' ? 'error' : authority === 'ROLE_ORGANIZER' ? 'primary' : authority === 'ROLE_STAFF' ? 'info' : 'default'} 
+                            size="small" 
+                          />
+                        );
+                      })}
                     </Box>
                   ) 
                   : 'No roles assigned'

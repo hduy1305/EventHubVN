@@ -305,8 +305,8 @@ const EventWizardInner: React.FC = () => {
     },
     showtimes: state.showtimes.map(showtime => ({
       code: showtime.code,
-      startTime: showtime.startTime,
-      endTime: showtime.endTime,
+      startTime: showtime.startTime ? `${showtime.startTime}:00` : '',
+      endTime: showtime.endTime ? `${showtime.endTime}:00` : '',
     })),
     ticketTypes: state.ticketTypes.map(type => ({
       code: type.code,

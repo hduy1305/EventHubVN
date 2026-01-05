@@ -32,7 +32,7 @@ const OrderConfirmationPage: React.FC = () => {
       setLoading(true);
       try {
         const fetchedOrder = await OrdersService.getApiOrders(orderId);
-        if (fetchedOrder.userId !== user.id && !user.roles?.includes('ADMIN') && !user.roles?.includes('ORGANIZER')) {
+        if (fetchedOrder.userId !== user.id && !user.roles?.some(r => (r as any).authority === 'ROLE_ADMIN') && !user.roles?.some(r => (r as any).authority === 'ROLE_ORGANIZER')) {
             showNotification('You are not authorized to view this order.', 'error');
             setLoading(false);
             return;
@@ -89,7 +89,7 @@ const OrderConfirmationPage: React.FC = () => {
                   <ListItemText primary="Event ID" secondary={order.eventId} />
                 </ListItem>
                 <ListItem divider>
-                  <ListItemText primary="Total Amount" secondary={`$${order.totalAmount.toFixed(2)} ${order.currency}`} />
+                  <ListItemText primary="Total Amount" secondary={`$${(order.totalAmount || 0).toFixed(2)} ${order.currency}`} />
                 </ListItem>
                 <ListItem divider>
                   <ListItemText primary="Payment Method" secondary={order.paymentMethod} />
@@ -101,7 +101,7 @@ const OrderConfirmationPage: React.FC = () => {
                       {order.items?.map((item, index) => (
                         <li key={index}>
                           <Typography variant="body2">
-                            Ticket Type {item.ticketTypeId}: {item.tickets?.length || 0} tickets @ ${item.price.toFixed(2)} each
+                            Ticket Type {item.ticketTypeId}: {item.tickets?.length || 0} tickets @ ${(item.price || 0).toFixed(2)} each
                           </Typography>
                         </li>
                       ))}

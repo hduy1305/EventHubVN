@@ -1,0 +1,25 @@
+/* HTML5 QR Code Scanner Styles */
+#qr-scanner-container {
+  width: 100%;
+  max-height: 400px;
+}
+
+#qr-scanner-container > div {
+  width: 100%;
+}
+
+#qr-scanner-container video {
+  width: 100% !important;
+  max-height: 400px !important;
+  border-radius: 8px;
+}
+
+.html5-qrcode-element {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.html5-qrcode-element canvas {
+  border-radius: 8px;
+}

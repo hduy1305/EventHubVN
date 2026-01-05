@@ -42,7 +42,7 @@ const EventDetailPage: React.FC = () => {
 
         const initialQuantities: { [key: number]: number } = {};
         fetchedTicketTypes.forEach(type => {
-          initialQuantities[type.id] = 1;
+          if (type.id !== undefined) initialQuantities[type.id] = 1;
         });
         setSelectedQuantities(initialQuantities);
 
@@ -65,7 +65,7 @@ const EventDetailPage: React.FC = () => {
   };
 
   const handleAddToCart = (ticketType: TicketType) => {
-    if (!event) return;
+    if (!event || !ticketType.id) return;
 
     const quantity = selectedQuantities[ticketType.id];
     if (!quantity || quantity <= 0) {
@@ -76,11 +76,10 @@ const EventDetailPage: React.FC = () => {
     addToCart(
       {
         ticketTypeId: ticketType.id,
-        ticketTypeName: ticketType.name,
-        price: ticketType.price,
+        ticketTypeName: ticketType.name || '',
+        price: ticketType.price || 0,
         eventId: event.id!,
         eventName: event.name!,
-        description: ticketType.description,
         quota: ticketType.quota,
         purchaseLimit: ticketType.purchaseLimit,
         startSale: ticketType.startSale,
@@ -180,7 +179,7 @@ const EventDetailPage: React.FC = () => {
                   <CalendarTodayIcon color="action" />
                   <Box>
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">Date</Typography>
-                    <Typography variant="body2">{new Date(event.startTime).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Typography>
+                    <Typography variant="body2">{event.startTime ? new Date(event.startTime).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</Typography>
                   </Box>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -188,7 +187,7 @@ const EventDetailPage: React.FC = () => {
                   <Box>
                     <Typography variant="subtitle2" fontWeight="bold" color="text.primary">Time</Typography>
                     <Typography variant="body2">
-                      {new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {event.startTime ? new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                     </Typography>
                   </Box>
                 </Box>
@@ -238,7 +237,7 @@ const EventDetailPage: React.FC = () => {
                     <Card variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                       <Typography variant="subtitle1" fontWeight="bold">{event.venue.name}</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        {event.venue.streetAddress || event.venue.address}, {event.venue.ward}, {event.venue.district}, {event.venue.city}
+                        {event.venue.address}, {event.venue.city}
                       </Typography>
                     </Card>
                   </Grid>
@@ -262,7 +261,7 @@ const EventDetailPage: React.FC = () => {
                     variant="outlined" 
                     sx={{ borderRadius: 1 }}
                   />
-                  {event.refundEnabled && (
+                  {event.refundEnabled && event.refundFeePercent !== undefined && (
                     <Chip label={`${(event.refundFeePercent * 100).toFixed(0)}% Fee`} size="small" variant="outlined" />
                   )}
                 </Stack>
@@ -312,10 +311,10 @@ const EventDetailPage: React.FC = () => {
                         <Box>
                           <Typography variant="subtitle1" fontWeight="700">{type.name}</Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block' }}>
-                            {type.description}
+                            Standard ticket
                           </Typography>
                         </Box>
-                        <Typography variant="h6" color="primary.main" fontWeight="700">${type.price.toFixed(2)}</Typography>
+                        <Typography variant="h6" color="primary.main" fontWeight="700">${(type.price || 0).toFixed(2)}</Typography>
                       </Box>
                       
                       <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
@@ -337,10 +336,10 @@ const EventDetailPage: React.FC = () => {
                       
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                          <Chip 
-                            label={type.quota > 0 ? `${type.quota} left` : 'Sold Out'} 
-                            color={type.quota < 10 ? "warning" : "default"} 
+                            label={(type.quota ?? 0) > 0 ? `${type.quota} left` : 'Sold Out'} 
+                            color={(type.quota ?? 0) < 10 ? "warning" : "default"} 
                             size="small" 
-                            variant="soft" // Note: soft variant might need custom theme, falling back to filled/outlined default
+                            variant="outlined"
                             sx={{ height: 24, fontSize: '0.75rem' }}
                          />
                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -348,15 +347,15 @@ const EventDetailPage: React.FC = () => {
                               type="number"
                               size="small"
                               inputProps={{ min: 1, max: type.purchaseLimit, style: { padding: '4px 8px', textAlign: 'center' } }}
-                              value={selectedQuantities[type.id] || 1}
-                              onChange={(e) => handleQuantityChange(type.id, parseInt(e.target.value))}
+                              value={type.id !== undefined ? (selectedQuantities[type.id] || 1) : 1}
+                              onChange={(e) => type.id !== undefined && handleQuantityChange(type.id, parseInt(e.target.value))}
                               sx={{ width: '60px', '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
                             />
                             <Button
                               variant="contained"
                               size="small"
                               onClick={() => handleAddToCart(type)}
-                              disabled={(selectedQuantities[type.id] || 0) <= 0 || (type.quota || 0) <= 0}
+                              disabled={type.id === undefined || (selectedQuantities[type.id] || 0) <= 0 || (type.quota ?? 0) <= 0}
                               sx={{ minWidth: '64px', borderRadius: 1, boxShadow: 'none' }}
                             >
                               Add

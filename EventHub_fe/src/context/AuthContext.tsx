@@ -114,6 +114,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await AuthService.postApiAuthLogin(credentials);
       
+      if (!response.accessToken || !response.refreshToken) {
+        setError('Invalid authentication response');
+        setLoading(false);
+        return;
+      }
+      
       localStorage.setItem('accessToken', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
       OpenAPI.TOKEN = response.accessToken;

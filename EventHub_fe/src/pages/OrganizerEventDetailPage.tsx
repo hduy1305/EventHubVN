@@ -167,7 +167,7 @@ const OrganizerEventDetailPage: React.FC = () => {
             </List>
             <Divider sx={{ mt: 2, mb: 2 }} />
             <Typography variant="body2" color="textSecondary">
-              <strong>Hướng dẫn:</strong> Khách hàng nhập mã giảm giá khi thanh toán để được giảm giá vé. Nếu mã hợp lệ, hệ thống sẽ tự động áp dụng mức giảm tương ứng.
+              <strong>Instructions:</strong> Customers can enter a discount code during checkout to receive ticket discounts. If the code is valid, the system will automatically apply the corresponding discount amount.
             </Typography>
           </Paper>
         </Grid>

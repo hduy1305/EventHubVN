@@ -20,6 +20,7 @@
     "bootstrap": "^5.3.8",
     "chart": "^0.1.2",
     "framer-motion": "^12.23.25",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^3.0.4",
     "jwt-decode": "^4.0.0",
     "qrcode": "^1.5.4",

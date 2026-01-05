@@ -152,22 +152,43 @@ const OrganizerDashboardPage: React.FC = () => {
 
   const handleAssignStaffToEvent = async () => {
     if (!staffEmail.trim()) {
-      showNotification('Enter a user email to assign.', 'error');
+      showNotification('Please enter a staff email address.', 'error');
       return;
     }
     if (!selectedEventId) {
-      showNotification('Select an event to assign.', 'error');
+      showNotification('Please select an event.', 'error');
       return;
     }
+
+    // Verify the selected event belongs to the current organizer
+    const selectedEvent = events.find(e => e.id === selectedEventId);
+    if (!selectedEvent || selectedEvent.organizerId !== user?.id) {
+      showNotification('You can only assign staff to your own events.', 'error');
+      return;
+    }
+
     setStaffLoading(true);
     try {
+      // Get user ID by email
       const userId = await UsersService.getApiUsersIdByEmail(staffEmail.trim());
+      
+      // Grant STAFF role if organizer organization exists
+      if (organizerOrgId) {
+        try {
+          await OrganizationService.postApiOrganizationsUsersRolesByName(organizerOrgId, userId, 'STAFF');
+        } catch (roleErr: any) {
+          // If role granting fails, continue with event assignment
+          console.warn('Staff role grant failed, but continuing with event assignment:', roleErr);
+        }
+      }
+      
+      // Assign staff to event
       await UsersService.postApiUsersAssignedEvents(userId, Number(selectedEventId));
-      showNotification('Staff assigned to event successfully.', 'success');
+      showNotification(`Staff assigned to "${selectedEvent.name}" successfully.`, 'success');
       setStaffEmail('');
       setSelectedEventId('');
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to assign staff to event.';
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to assign staff.';
       showNotification(errorMessage, 'error');
     } finally {
       setStaffLoading(false);
@@ -203,22 +224,30 @@ const OrganizerDashboardPage: React.FC = () => {
       {/* Staff Management Card */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>Staff Management</Typography>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '2fr 2fr 1fr 1fr' }, alignItems: 'center' }}>
+          <Typography variant="h6" gutterBottom>Assign Staff to Your Events</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Add staff members to help manage your events. They will receive the STAFF role and be assigned to the selected event.
+          </Typography>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '2fr 2fr 1fr' }, alignItems: 'center' }}>
             <TextField
-              label="User Email"
+              label="Staff Email"
+              placeholder="Enter staff member email"
               value={staffEmail}
               onChange={e => setStaffEmail(e.target.value)}
               size="small"
+              fullWidth
             />
             <FormControl fullWidth size="small">
-              <InputLabel>Assign to Event</InputLabel>
+              <InputLabel>Select Your Event</InputLabel>
               <Select
-                label="Assign to Event"
+                label="Select Your Event"
                 value={selectedEventId}
                 onChange={e => setSelectedEventId(e.target.value as number | '')}
               >
-                {events.map(event => (
+                <MenuItem value="">
+                  <em>Choose an event...</em>
+                </MenuItem>
+                {events.filter(event => event.status === 'PUBLISHED').map(event => (
                   <MenuItem key={event.id} value={event.id}>
                     {event.name}
                   </MenuItem>
@@ -226,19 +255,12 @@ const OrganizerDashboardPage: React.FC = () => {
               </Select>
             </FormControl>
             <Button
-              onClick={handleGrantStaffRole}
-              variant="contained"
-              disabled={staffLoading}
-            >
-              Grant Role
-            </Button>
-            <Button
               onClick={handleAssignStaffToEvent}
               variant="contained"
-              color="info"
-              disabled={staffLoading}
+              disabled={staffLoading || !staffEmail.trim() || !selectedEventId}
+              fullWidth
             >
-              Assign
+              {staffLoading ? 'Assigning...' : 'Assign Staff'}
             </Button>
           </Box>
         </CardContent>

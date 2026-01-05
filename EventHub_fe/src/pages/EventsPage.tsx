@@ -102,7 +102,7 @@ const EventsPage: React.FC = () => {
     });
   };
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setCurrentPage(value - 1);
   };
 
@@ -279,7 +279,7 @@ const EventsPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, color: 'text.secondary' }}>
                         <CalendarTodayIcon sx={{ fontSize: 16, mr: 1 }} />
                         <Typography variant="body2">
-                          {new Date(event.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          {event.startTime ? new Date(event.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBA'}
                         </Typography>
                       </Box>
                       

@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Container, Typography, CircularProgress, Grid, Card, CardContent, Box, Alert, TextField, FormControl, InputLabel, Select, MenuItem, Chip, Divider } from '@mui/material';
+import { Container, Typography, Grid, Card, CardContent, Box, Alert, TextField, FormControl, InputLabel, Select, MenuItem, Chip, Divider, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { TicketsService } from '../api/services/TicketsService';
 import type { TicketResponse } from '../api/models/TicketResponse';
 import { motion } from 'framer-motion';
-import QRCode from 'qrcode';
+import GetAppIcon from '@mui/icons-material/GetApp';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 
 const MyTicketsPage: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [qrCodes, setQrCodes] = useState<Record<string, string>>({});
 
   // Filter State
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -20,12 +20,35 @@ const MyTicketsPage: React.FC = () => {
   const [eventFilter, setEventFilter] = useState<string>('ALL');
   const [keyword, setKeyword] = useState<string>('');
 
+  // Dialog State for Transfer
+  const [transferDialog, setTransferDialog] = useState<{ open: boolean; ticketCode?: string }>({ open: false });
+  const [transferEmail, setTransferEmail] = useState<string>('');
+  const [transferring, setTransferring] = useState<boolean>(false);
+
   useEffect(() => {
-    const fetchMyTickets = async () => {
-// ... fetch logic remains the same ...
-    };
-// ... rest remains same ...
+    if (!user?.id) {
+      showNotification('User not authenticated.', 'error');
+      setLoading(false);
+      return;
+    }
+    fetchMyTickets();
   }, [user, showNotification]);
+
+  const fetchMyTickets = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      // Fetch all tickets for the user's events they attended
+      const allTickets = await TicketsService.getApiTicketsUser(user.id);
+      setTickets(allTickets || []);
+    } catch (err: any) {
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch tickets.';
+      showNotification(errorMessage, 'error');
+      console.error('Failed to fetch tickets:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Derive unique categories and events for filters
   const uniqueCategories = useMemo(() => {
@@ -54,12 +77,56 @@ const MyTicketsPage: React.FC = () => {
     });
   }, [tickets, statusFilter, categoryFilter, eventFilter, keyword]);
 
-  const getStatusColor = (status?: string) => {
-// ... color logic ...
+  const getStatusColor = () => {
+    return 'default';
+  };
+
+  const handleTransferTicket = async () => {
+    if (!transferDialog.ticketCode || !transferEmail.trim()) {
+      showNotification('Please enter recipient email.', 'warning');
+      return;
+    }
+    setTransferring(true);
+    try {
+      // Call transfer API
+      await TicketsService.postApiTicketsTransfer(transferDialog.ticketCode, transferEmail.trim(), user?.id || '');
+      showNotification(`Ticket transferred to ${transferEmail} successfully!`, 'success');
+      setTransferDialog({ open: false });
+      setTransferEmail('');
+      fetchMyTickets();
+    } catch (err: any) {
+      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to transfer ticket.';
+      showNotification(errorMessage, 'error');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const handleDownloadTicket = (ticket: TicketResponse) => {
+    // Generate simple ticket PDF or download QR code
+    const ticketData = `
+Ticket Code: ${ticket.ticketCode}
+Event: ${ticket.eventName}
+Attendee: ${ticket.attendeeName}
+Email: ${ticket.attendeeEmail}
+Status: ${ticket.status}
+    `;
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(ticketData));
+    element.setAttribute('download', `ticket-${ticket.ticketCode}.txt`);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    showNotification('Ticket downloaded!', 'success');
   };
 
   if (loading) {
-// ... loading ...
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
@@ -141,12 +208,12 @@ const MyTicketsPage: React.FC = () => {
                       label={ticket.eventCategory || 'Event'} 
                       size="small" 
                       color="primary" 
-                      variant="soft" // If soft fails, it defaults to filled
+                      variant="outlined"
                       sx={{ fontWeight: 600, fontSize: '0.7rem' }}
                     />
                     <Chip 
                       label={ticket.status} 
-                      color={getStatusColor(ticket.status) as any} 
+                      color={getStatusColor() as any} 
                       size="small" 
                       variant="outlined"
                       sx={{ fontWeight: 600 }}
@@ -154,16 +221,7 @@ const MyTicketsPage: React.FC = () => {
                   </Box>
                   
                   <Box sx={{ my: 2, display: 'flex', justifyContent: 'center' }}>
-                    {qrCodes[ticket.ticketCode || 'N/A'] ? (
-                      <Box
-                        component="img"
-                        src={qrCodes[ticket.ticketCode || 'N/A']}
-                        alt="Ticket QR"
-                        sx={{ width: 160, height: 160, border: '1px solid', borderColor: 'divider', p: 1, borderRadius: 1 }}
-                      />
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">QR unavailable</Typography>
-                    )}
+                    <Typography variant="body2" color="text.secondary">Ticket Code: {ticket.ticketCode}</Typography>
                   </Box>
                   
                   <Typography variant="h6" component="div" sx={{ mb: 0.5, fontWeight: '800', lineHeight: 1.2 }}>
@@ -187,6 +245,32 @@ const MyTicketsPage: React.FC = () => {
                       <Typography variant="caption" fontWeight="bold">{ticket.attendeeName}</Typography>
                     </Box>
                   </Box>
+                  
+                  <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
+                  
+                  {/* Quick Actions */}
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<GetAppIcon />}
+                      onClick={() => handleDownloadTicket(ticket)}
+                      fullWidth
+                    >
+                      Download
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="success"
+                      startIcon={<CompareArrowsIcon />}
+                      onClick={() => setTransferDialog({ open: true, ticketCode: ticket.ticketCode })}
+                      fullWidth
+                      disabled={ticket.status !== 'ISSUED'}
+                    >
+                      Transfer
+                    </Button>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -197,6 +281,35 @@ const MyTicketsPage: React.FC = () => {
           {tickets.length === 0 ? "You don't have any tickets yet." : "No tickets match your filters."}
         </Alert>
       )}
+
+      {/* Transfer Dialog */}
+      <Dialog open={transferDialog.open} onClose={() => setTransferDialog({ open: false })}>
+        <DialogTitle>Transfer Ticket</DialogTitle>
+        <DialogContent sx={{ minWidth: 400 }}>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Enter the email of the person you want to transfer this ticket to.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Recipient Email"
+            placeholder="recipient@example.com"
+            type="email"
+            value={transferEmail}
+            onChange={(e) => setTransferEmail(e.target.value)}
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTransferDialog({ open: false })}>Cancel</Button>
+          <Button 
+            onClick={handleTransferTicket} 
+            variant="contained" 
+            disabled={transferring || !transferEmail.trim()}
+          >
+            {transferring ? 'Transferring...' : 'Transfer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

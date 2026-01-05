@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Grid, Card, CardContent, Button, TextField, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Box, CircularProgress, Typography, Alert, Stack, Tooltip } from '@mui/material';
 import { EventsService } from '../api/services/EventsService';
 import { TicketsService } from '../api/services/TicketsService';
-import { UsersService } from '../api/services/UsersService';
 import type { Event } from '../api/models/Event';
 import type { CheckInLogDto } from '../api/models/CheckInLogDto';
 import type { TicketResponse } from '../api/models/TicketResponse';
@@ -11,6 +10,8 @@ import { useNotification } from '../context/NotificationContext';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import HistoryIcon from '@mui/icons-material/History';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import { Html5QrcodeScanner } from 'html5-qrcode';
+import './CheckInPage.css';
 
 type BarcodeDetectorType = {
   detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
@@ -28,8 +29,8 @@ const CheckInPage: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState<boolean>(true);
-  const isOrganizer = user?.roles?.includes('ROLE_ORGANIZER') || false;
-  const isAdmin = user?.roles?.includes('ROLE_ADMIN') || false;
+  const isOrganizer = user?.roles?.some(r => (r as any).authority === 'ROLE_ORGANIZER') || false;
+  const isAdmin = user?.roles?.some(r => (r as any).authority === 'ROLE_ADMIN') || false;
 
   const [availableEvents, setAvailableEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
@@ -40,7 +41,7 @@ const CheckInPage: React.FC = () => {
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [assigning, setAssigning] = useState<boolean>(false);
+  const html5ScannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const [checkInLogs, setCheckInLogs] = useState<CheckInLogDto[]>([]);
   const [attendeeTickets, setAttendeeTickets] = useState<TicketResponse[]>([]);
@@ -80,38 +81,63 @@ const CheckInPage: React.FC = () => {
 
     const startScanner = async () => {
       setScannerError(null);
-      if (!window.BarcodeDetector) {
-        setScannerError('QR scanning not supported in this browser.');
-        setIsScanning(false);
-        return;
-      }
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-        const scanLoop = async () => {
-          if (!isScanning || !videoRef.current) return;
-          try {
-            const codes = await detector.detect(videoRef.current);
-            if (codes.length > 0) {
-              const value = codes[0].rawValue;
-              setTicketCodeInput(value);
-              showNotification('QR detected, code filled.', 'success');
-              setIsScanning(false);
-              return;
-            }
-          } catch (err) {
-            console.error('Scan error', err);
+      
+      // Try native BarcodeDetector first (Chrome, Edge)
+      if (window.BarcodeDetector) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
           }
-          rafId = requestAnimationFrame(scanLoop);
-        };
-        scanLoop();
+          const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          const scanLoop = async () => {
+            if (!isScanning || !videoRef.current) return;
+            try {
+              const codes = await detector.detect(videoRef.current);
+              if (codes.length > 0) {
+                const value = codes[0].rawValue;
+                setTicketCodeInput(value);
+                showNotification('QR detected, code filled.', 'success');
+                setIsScanning(false);
+                return;
+              }
+            } catch (err) {
+              console.error('Scan error', err);
+            }
+            rafId = requestAnimationFrame(scanLoop);
+          };
+          scanLoop();
+          return;
+        } catch (err: any) {
+          console.error('BarcodeDetector failed, falling back to html5-qrcode:', err);
+          // Fall through to html5-qrcode
+        }
+      }
+
+      // Fallback to html5-qrcode for Firefox, Safari, etc.
+      try {
+        const scanner = new Html5QrcodeScanner(
+          'qr-scanner-container',
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+        
+        html5ScannerRef.current = scanner;
+        scanner.render(
+          (decodedText) => {
+            setTicketCodeInput(decodedText);
+            showNotification('QR detected, code filled.', 'success');
+            setIsScanning(false);
+            scanner.clear();
+          },
+          () => {
+            // Ignore decode errors
+          }
+        );
       } catch (err: any) {
         console.error('Scanner start failed', err);
-        setScannerError(err.message || 'Unable to access camera.');
+        setScannerError(err.message || 'Unable to start QR scanner.');
         setIsScanning(false);
       }
     };
@@ -124,6 +150,9 @@ const CheckInPage: React.FC = () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (stream) {
         stream.getTracks().forEach(t => t.stop());
+      }
+      if (html5ScannerRef.current) {
+        html5ScannerRef.current.clear().catch(console.error);
       }
     };
   }, [isScanning, showNotification]);
@@ -238,23 +267,6 @@ const CheckInPage: React.FC = () => {
     }
   };
 
-  const handleAssignToEvent = async () => {
-    if (!user?.id || !selectedEventId) {
-      showNotification('Select an event before assigning.', 'warning');
-      return;
-    }
-    setAssigning(true);
-    try {
-      await UsersService.postApiUsersAssignedEvents(user.id, parseInt(selectedEventId));
-      showNotification('You have been assigned to this event for check-in.', 'success');
-    } catch (err: any) {
-      const msg = err.body?.message || err.response?.data?.message || err.message || 'Failed to assign staff to event.';
-      showNotification(msg, 'error');
-    } finally {
-      setAssigning(false);
-    }
-  };
-
   const handleExportAttendees = () => {
     if (!currentEvent) {
       showNotification('Please select an event first.', 'warning');
@@ -318,13 +330,6 @@ const CheckInPage: React.FC = () => {
                   </MenuItem>
                 ))}
             </TextField>
-            <Button
-              variant="outlined"
-              onClick={handleAssignToEvent}
-              disabled={!selectedEventId || assigning}
-            >
-              {assigning ? 'Assigning...' : 'Assign me to this event'}
-            </Button>
           </Stack>
         </CardContent>
       </Card>
@@ -370,7 +375,8 @@ const CheckInPage: React.FC = () => {
                   </Stack>
                   {isScanning && (
                     <Box sx={{ mb: 2 }}>
-                      <video ref={videoRef} style={{ width: '100%', maxHeight: 240, borderRadius: 8 }} muted playsInline />
+                      <video ref={videoRef} style={{ width: '100%', maxHeight: 240, borderRadius: 8, display: 'none' }} muted playsInline />
+                      <div id="qr-scanner-container" style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }} />
                     </Box>
                   )}
                   <Tooltip title={showCheckInTooltip ? 'Check-in is available' : ''} disableHoverListener={!showCheckInTooltip}>
@@ -415,7 +421,7 @@ const CheckInPage: React.FC = () => {
                         {checkInLogs.map(log => (
                           <TableRow key={log.id}>
                             <TableCell>{log.ticket?.ticketCode}</TableCell>
-                            <TableCell>{new Date(log.checkInTime).toLocaleTimeString()}</TableCell>
+                            <TableCell>{log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString() : '-'}</TableCell>
                             <TableCell>
                               <Button
                                 variant="outlined"
