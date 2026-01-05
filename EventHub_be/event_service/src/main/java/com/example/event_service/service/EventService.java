@@ -227,6 +227,7 @@ public class EventService {
         List<TicketType> ticketTypes = mapTicketTypes(event, request.getTicketTypes());
         mapTicketZones(event, request.getTicketDetails(), ticketTypes);
         mapAllocations(showtimes, request.getAllocations(), ticketTypes);
+        calculateQuotasFromAllocations(ticketTypes, showtimes);
 
         event.setShowtimes(showtimes);
         event.setTicketTypes(ticketTypes);
@@ -427,6 +428,35 @@ public class EventService {
                     .quantity(allocationRequest.getQuantity())
                     .build();
             showtime.getAllocations().add(allocation);
+        }
+    }
+
+    private void calculateQuotasFromAllocations(List<TicketType> ticketTypes, List<EventShowtime> showtimes) {
+        if (ticketTypes == null || showtimes == null) {
+            return;
+        }
+        Map<String, Integer> ticketTypeTotalQuota = new HashMap<>();
+        
+        // Calculate total allocation for each ticket type across all showtimes
+        for (EventShowtime showtime : showtimes) {
+            if (showtime.getAllocations() == null) {
+                continue;
+            }
+            for (ShowtimeTicketAllocation allocation : showtime.getAllocations()) {
+                if (allocation.getTicketType() != null && allocation.getTicketType().getCode() != null) {
+                    String code = allocation.getTicketType().getCode();
+                    Integer quantity = allocation.getQuantity() != null ? allocation.getQuantity() : 0;
+                    ticketTypeTotalQuota.put(code, ticketTypeTotalQuota.getOrDefault(code, 0) + quantity);
+                }
+            }
+        }
+        
+        // Set quota for each ticket type based on total allocation
+        for (TicketType ticketType : ticketTypes) {
+            if (ticketType.getCode() != null) {
+                Integer totalQuota = ticketTypeTotalQuota.getOrDefault(ticketType.getCode(), 0);
+                ticketType.setQuota(totalQuota);
+            }
         }
     }
 

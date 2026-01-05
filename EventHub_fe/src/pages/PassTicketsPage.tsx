@@ -5,6 +5,7 @@ import type { MarketplaceListing } from '../api/models/MarketplaceListing';
 import type { PostTicketRequest } from '../api/models/PostTicketRequest';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const PassTicketsPage: React.FC = () => {
   const { user } = useAuth();
@@ -26,8 +27,8 @@ const PassTicketsPage: React.FC = () => {
       setActiveListings(active);
       setMyListings(mine);
     } catch (err: any) {
-      const msg = err.body?.message || err.response?.data?.message || err.message || 'Failed to load marketplace.';
-      showNotification(msg, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách vé');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 
@@ -45,8 +46,8 @@ const PassTicketsPage: React.FC = () => {
       showNotification(res.paymentUrl ? 'Redirecting to payment...' : 'Purchase initiated.', 'success');
       refreshListings();
     } catch (err: any) {
-      const msg = err.body?.message || err.response?.data?.message || err.message || 'Purchase failed.';
-      showNotification(msg, 'error');
+      const errorData = getErrorMessage(err, 'Không thể mua vé');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 
@@ -68,8 +69,8 @@ const PassTicketsPage: React.FC = () => {
       setNewListing({ ticketCode: '', price: 0, sellerId: user.id });
       refreshListings();
     } catch (err: any) {
-      const msg = err.body?.message || err.response?.data?.message || err.message || 'Failed to post ticket.';
-      showNotification(msg, 'error');
+      const errorData = getErrorMessage(err, 'Không thể đăng vé');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 

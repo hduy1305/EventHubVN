@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
 import { motion } from 'framer-motion';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const RegisterPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -25,7 +26,8 @@ const RegisterPage: React.FC = () => {
 
   React.useEffect(() => {
     if (authError) {
-      showNotification(authError, 'danger');
+      const errorData = getErrorMessage(new Error(authError), 'Đăng ký thất bại');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   }, [authError, showNotification]);
 

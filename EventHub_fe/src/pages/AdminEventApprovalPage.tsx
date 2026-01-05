@@ -4,6 +4,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { EventsService } from '../api/services/EventsService';
 import type { Event } from '../api/models/Event';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import { EventStatus } from '../api/models/EventStatus';
 
 const AdminEventApprovalPage: React.FC = () => {
@@ -29,7 +30,8 @@ const AdminEventApprovalPage: React.FC = () => {
       );
       setEvents(response.content || []);
     } catch (err: any) {
-      showNotification(err.body?.message || `Failed to fetch ${status.toLowerCase()} events.`, 'error');
+      const errorData = getErrorMessage(err, `Không thể tải danh sách sự kiện. Vui lòng thử lại sau.`);
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -49,7 +51,8 @@ const AdminEventApprovalPage: React.FC = () => {
       showNotification(`Event ${eventId} has been approved.`, 'success');
       fetchEventsByStatus(currentTab);
     } catch (err: any) {
-      showNotification(err.body?.message || `Failed to approve event.`, 'error');
+      const errorData = getErrorMessage(err, 'Không thể duyệt sự kiện. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 
@@ -59,7 +62,8 @@ const AdminEventApprovalPage: React.FC = () => {
       showNotification(`Event ${eventId} has been cancelled.`, 'success');
       fetchEventsByStatus(currentTab);
     } catch (err: any) {
-      showNotification(err.body?.message || `Failed to cancel event.`, 'error');
+      const errorData = getErrorMessage(err, 'Không thể hủy bỏ sự kiện. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 

@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import TicketTransferModal from '../components/TicketTransferModal';
 import { EventsService } from '../api/services/EventsService';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import { generateTicketPDF } from '../utils/pdfGenerator'; // Import PDF generator
 
 const OrderDetailsPage: React.FC = () => {
@@ -63,8 +64,8 @@ const OrderDetailsPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch order details or tickets.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải chi tiết đơn hàng. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch order details or tickets:", err);
     } finally {
       setLoading(false);
@@ -84,7 +85,8 @@ const OrderDetailsPage: React.FC = () => {
         showNotification('Ticket downloaded successfully!', 'success');
     } catch (err) {
         console.error("PDF generation failed:", err);
-        showNotification('Failed to generate ticket PDF.', 'error');
+        const errorData = getErrorMessage(err, 'Không thể tạo PDF vé');
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 
@@ -116,8 +118,8 @@ const OrderDetailsPage: React.FC = () => {
       showNotification('Order cancellation request submitted. Status will update shortly.', 'success');
       fetchOrderAndTickets();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to cancel order.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể hủy đơn hàng');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to cancel order:", err);
     }
   };

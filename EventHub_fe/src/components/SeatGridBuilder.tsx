@@ -17,6 +17,7 @@ import {
 import { EventsService } from '../api/services/EventsService';
 import type { Seat } from '../api/models/Seat';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import AddIcon from '@mui/icons-material/Add';
 
 interface SeatGridBuilderProps {
@@ -55,7 +56,8 @@ const SeatGridBuilder: React.FC<SeatGridBuilderProps> = ({ eventId }) => {
       const fetchedSeats = await EventsService.getApiEventsSeats(eventId);
       setSeats(fetchedSeats);
     } catch (err: any) {
-      showNotification('Failed to fetch seats', 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách ghế');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -109,7 +111,8 @@ const SeatGridBuilder: React.FC<SeatGridBuilderProps> = ({ eventId }) => {
       setShowPreview(false);
       fetchSeatsAndTypes();
     } catch (err: any) {
-      showNotification('Failed to save seats', 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu bố cục ghế');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

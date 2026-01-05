@@ -222,8 +222,41 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </>
               ) : (
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button component={RouterLink} to="/login" variant="text" color="inherit">Login</Button>
-                  <Button component={RouterLink} to="/register" variant="contained" color="primary" disableElevation>Register</Button>
+                  <Button 
+                    component={RouterLink} 
+                    to="/login" 
+                    variant="text" 
+                    color="inherit"
+                    sx={{
+                      fontWeight: 500,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                        color: 'primary.main',
+                        transform: 'translateY(-2px)',
+                      },
+                    }}
+                  >
+                    Login
+                  </Button>
+                  <Button 
+                    component={RouterLink} 
+                    to="/register" 
+                    variant="contained" 
+                    color="primary" 
+                    disableElevation
+                    sx={{
+                      fontWeight: 600,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        backgroundColor: 'primary.dark',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 16px rgba(33, 150, 243, 0.3)',
+                      },
+                    }}
+                  >
+                    Register
+                  </Button>
                 </Box>
               )}
             </Box>

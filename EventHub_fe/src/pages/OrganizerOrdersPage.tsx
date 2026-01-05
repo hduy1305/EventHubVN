@@ -9,6 +9,7 @@ import { EventStatus } from '../api/models/EventStatus';
 import { OrderStatus } from '../api/models/OrderStatus';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const OrganizerOrdersPage: React.FC = () => {
   const { user } = useAuth();
@@ -62,8 +63,8 @@ const OrganizerOrdersPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch organizer data.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Kh\u00f4ng th\u1ec3 t\u1ea3i d\u1eef li\u1ec7u. Vui l\u00f2ng th\u1eed l\u1ea1i sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch organizer data:", err);
     } finally {
       setLoading(false);
@@ -88,8 +89,8 @@ const OrganizerOrdersPage: React.FC = () => {
       setResendRecipientEmail('');
       setResendOrderId(null);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to resend tickets.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể gửi lại vé');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to resend tickets:", err);
     } finally {
       setResendLoading(false);
@@ -110,8 +111,8 @@ const OrganizerOrdersPage: React.FC = () => {
       showNotification(`Order #${orderId} has been cancelled/refunded.`, 'success');
       fetchOrganizerData();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to cancel/refund order.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể hủy/hoàn lại đơn hàng');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to cancel/refund order:", err);
     } finally {
       setLoading(false);

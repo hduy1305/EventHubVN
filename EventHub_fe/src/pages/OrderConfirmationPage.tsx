@@ -5,6 +5,7 @@ import { OrdersService } from '../api/services/OrdersService';
 import type { OrderResponse } from '../api/models/OrderResponse';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 const OrderConfirmationPage: React.FC = () => {
@@ -39,7 +40,8 @@ const OrderConfirmationPage: React.FC = () => {
         }
         setOrder(fetchedOrder);
       } catch (err: any) {
-        showNotification(err.message || 'Failed to fetch order details.', 'error');
+        const errorData = getErrorMessage(err, 'Không thể tải thông tin đơn hàng');
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
         console.error("Failed to fetch order details:", err);
       } finally {
         setLoading(false);

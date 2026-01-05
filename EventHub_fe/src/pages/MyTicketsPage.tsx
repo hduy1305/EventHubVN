@@ -3,6 +3,7 @@ import { Container, Typography, Grid, Card, CardContent, Box, Alert, TextField, 
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { TicketsService } from '../api/services/TicketsService';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import type { TicketResponse } from '../api/models/TicketResponse';
 import { motion } from 'framer-motion';
 import GetAppIcon from '@mui/icons-material/GetApp';
@@ -42,8 +43,8 @@ const MyTicketsPage: React.FC = () => {
       const allTickets = await TicketsService.getApiTicketsUser(user.id);
       setTickets(allTickets || []);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch tickets.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải vé của bạn');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error('Failed to fetch tickets:', err);
     } finally {
       setLoading(false);
@@ -95,8 +96,8 @@ const MyTicketsPage: React.FC = () => {
       setTransferEmail('');
       fetchMyTickets();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to transfer ticket.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể chuyển vé');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setTransferring(false);
     }

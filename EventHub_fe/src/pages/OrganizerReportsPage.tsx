@@ -6,6 +6,7 @@ import type { Event } from '../api/models/Event';
 import { EventStatus } from '../api/models/EventStatus';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
@@ -66,8 +67,8 @@ const OrganizerReportsPage: React.FC = () => {
       const organizerManagedEvents = allEvents.filter(event => event.organizerId === user?.id);
       setEvents(organizerManagedEvents);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch your events.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch organizer events:", err);
     } finally {
       setLoading(false);
@@ -116,8 +117,8 @@ const OrganizerReportsPage: React.FC = () => {
         setEventTicketsSold(null);
       }
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch reports.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải báo cáo');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch reports:", err);
     } finally {
       // Optional: Set loading to false if this was the only loading indicator
@@ -164,8 +165,8 @@ const OrganizerReportsPage: React.FC = () => {
       );
       setDailySales(data);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch daily sales.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải báo cáo banhngày');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch daily sales:", err);
     } finally {
       setSalesLoading(false);

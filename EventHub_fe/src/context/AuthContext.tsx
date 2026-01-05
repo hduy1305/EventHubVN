@@ -5,6 +5,7 @@ import type { LoginRequest } from '../api/models/LoginRequest';
 import type { SignupRequest } from '../api/models/SignupRequest';
 import { OpenAPI } from '../api/core/OpenAPI';
 import { jwtDecode } from 'jwt-decode';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface DecodedJwt {
   id: string;
@@ -156,8 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(loginUserData);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Login failed';
-      setError(errorMessage);
+      const errorData = getErrorMessage(err, 'Đăng nhập thất bại');
+      setError(errorData.message);
       clearAuthData();
       throw err;
     } finally {
@@ -172,8 +173,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AuthService.postApiAuthSignup(details);
       await login({ email: details.email, password: details.password });
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Registration failed';
-      setError(errorMessage);
+      const errorData = getErrorMessage(err, 'Đăng ký thất bại');
+      setError(errorData.message);
       clearAuthData();
       throw err;
     } finally {

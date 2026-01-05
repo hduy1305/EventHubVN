@@ -10,6 +10,7 @@ import type { User } from '../api/models/User';
 import { useAuth } from '../context/AuthContext';
 import { Link as RouterLink } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 
@@ -73,8 +74,8 @@ const AdminDashboardPage: React.FC = () => {
       const fetchedOrganizations = await OrganizationService.getApiOrganizations();
       setOrganizations(fetchedOrganizations);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch organizations.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách tổ chức');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch organizations:", err);
     } finally {
       setLoading(false);
@@ -87,8 +88,8 @@ const AdminDashboardPage: React.FC = () => {
       const fetchedUsersRoles = await OrganizationService.getApiOrganizationsUsersRoles(orgId);
       setOrganizationUsersRoles(fetchedUsersRoles);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || `Failed to fetch users for organization ${orgId}.`;
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách người dùng');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch org users:", err);
     } finally {
       setLoading(false);
@@ -135,8 +136,8 @@ const AdminDashboardPage: React.FC = () => {
       setNewRoleId('');
       setSelectedUser(null);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to add user role.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể thêm vai trò cho người dùng');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to add user role:", err);
     } finally {
       setLoading(false);
@@ -153,8 +154,8 @@ const AdminDashboardPage: React.FC = () => {
       showNotification('User role updated successfully!', 'success');
       fetchOrganizationUsersAndRoles(selectedOrganization!.id!);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to update user role.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể cập nhật vai trò người dùng');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to update user role:", err);
     } finally {
       setLoading(false);
@@ -171,8 +172,8 @@ const AdminDashboardPage: React.FC = () => {
       showNotification('User role removed successfully!', 'success');
       fetchOrganizationUsersAndRoles(selectedOrganization!.id!);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to remove user role.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể xóa vai trò người dùng');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to remove user role:", err);
     } finally {
       setLoading(false);
@@ -198,8 +199,8 @@ const AdminDashboardPage: React.FC = () => {
       setOwner(null);
       fetchOrganizations(); // Refresh the list
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to create organization.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tạo tổ chức');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to create organization:", err);
     } finally {
       setLoading(false);
@@ -268,11 +269,11 @@ const AdminDashboardPage: React.FC = () => {
             options={userOptions}
             getOptionLabel={(option) => option.fullName || option.email || option.id || ''}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            onInputChange={(e, newValue) => {
+            onInputChange={(_, newValue) => {
               setOwnerSearch(newValue);
               fetchUsers(newValue);
             }}
-            onChange={(e, newValue) => setOwner(newValue)}
+            onChange={(_, newValue) => setOwner(newValue)}
             value={owner}
             filterOptions={(opts) => opts}
             loading={ownerSearch.length > 0 && userOptions.length === 0}
@@ -392,7 +393,6 @@ const AdminDashboardPage: React.FC = () => {
                 />
                 <Button variant="contained" onClick={handleAddPaymentMethod}>Add</Button>
               </Box>
-              <Alert severity="info" sx={{ mt: 2 }}>Frontend only demo.</Alert>
             </CardContent>
           </Card>
         </Grid>
@@ -401,8 +401,8 @@ const AdminDashboardPage: React.FC = () => {
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Global Fees & Policies</Typography>
-              <Grid container spacing={2}>
-                <Grid component="div" xs={6}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                   <TextField
                     label="Service Fee (%)"
                     type="number"
@@ -410,8 +410,6 @@ const AdminDashboardPage: React.FC = () => {
                     value={globalServiceFee * 100}
                     onChange={(e) => setGlobalServiceFee(parseFloat(e.target.value) / 100)}
                   />
-                </Grid>
-                <Grid component="div" xs={6}>
                   <TextField
                     label="Tax Rate (%)"
                     type="number"
@@ -419,22 +417,19 @@ const AdminDashboardPage: React.FC = () => {
                     value={globalTaxRate * 100}
                     onChange={(e) => setGlobalTaxRate(parseFloat(e.target.value) / 100)}
                   />
-                </Grid>
-                <Grid component="div" xs={12}>
-                  <TextField
-                    label="Refund Policy"
-                    multiline
-                    rows={3}
-                    fullWidth
-                    value={globalRefundPolicyText}
-                    onChange={(e) => setGlobalRefundPolicyText(e.target.value)}
-                  />
-                </Grid>
-              </Grid>
+                </Box>
+                <TextField
+                  label="Refund Policy"
+                  multiline
+                  rows={3}
+                  fullWidth
+                  value={globalRefundPolicyText}
+                  onChange={(e) => setGlobalRefundPolicyText(e.target.value)}
+                />
+              </Box>
               <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleSaveGlobalPolicies}>
                 Save Settings
               </Button>
-              <Alert severity="info" sx={{ mt: 2 }}>Frontend only demo.</Alert>
             </CardContent>
           </Card>
         </Grid>

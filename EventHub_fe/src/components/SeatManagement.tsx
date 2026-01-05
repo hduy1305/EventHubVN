@@ -4,6 +4,7 @@ import { EventsService } from '../api/services/EventsService';
 import type { Seat } from '../api/models/Seat';
 import type { TicketType } from '../api/models/TicketType';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -46,8 +47,8 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
       setTicketTypes(fetchedTicketTypes);
 
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch seats or ticket types.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải ghế và loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -102,8 +103,8 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
       setNewSeat({ section: '', rowLabel: '', seatNumber: '', seatCategory: '', isAvailable: true, locked: false, ticketType: undefined });
       fetchSeatsAndTicketTypes();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to save seat.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu ghế. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -132,8 +133,8 @@ const SeatManagement: React.FC<SeatManagementProps> = ({ eventId }) => {
       showNotification('Seat marked as unavailable successfully (simulated delete)!', 'success');
       fetchSeatsAndTicketTypes();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to delete seat.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu ghế');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

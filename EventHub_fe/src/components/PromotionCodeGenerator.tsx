@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { EventsService } from '../api/services/EventsService';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import type { Discount } from '../api/models/Discount';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
@@ -64,8 +65,8 @@ const PromotionCodeGenerator: React.FC<PromotionCodeGeneratorProps> = ({
       showNotification(`Promotion code ${discount.code} generated successfully!`, 'success');
       onSuccess?.(discount);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.message || 'Failed to generate promotion code';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tạo mã khuyến mãi');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

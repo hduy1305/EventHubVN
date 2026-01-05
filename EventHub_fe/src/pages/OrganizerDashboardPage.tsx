@@ -25,6 +25,7 @@ import { EventsService } from '../api/services/EventsService';
 import type { Event } from '../api/models/Event';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import { UsersService } from '../api/services/UsersService';
 import { OrganizationService } from '../api/services/OrganizationService';
 import AddIcon from '@mui/icons-material/Add';
@@ -64,6 +65,7 @@ const OrganizerDashboardPage: React.FC = () => {
   const [staffEmail, setStaffEmail] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<number | ''>('');
   const [staffLoading, setStaffLoading] = useState(false);
+  const [termsAndConditions, setTermsAndConditions] = useState<string>('Default terms and conditions...');
 
   // Status types
   const statuses = ['DRAFT', 'PENDING_APPROVAL', 'PUBLISHED', 'CANCELLED'];
@@ -103,8 +105,8 @@ const OrganizerDashboardPage: React.FC = () => {
       const organizerManagedEvents = allEvents.filter(event => event.organizerId === user.id);
       setEvents(organizerManagedEvents);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch your events.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch organizer events:", err);
     } finally {
       setLoading(false);
@@ -120,35 +122,12 @@ const OrganizerDashboardPage: React.FC = () => {
       showNotification('Event deleted successfully!', 'success');
       fetchOrganizerEvents();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to delete event.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể xóa sự kiện');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 
   const organizerOrgId = user?.organizationRoles?.find(role => role.roleName === 'ORGANIZER')?.organizationId;
-
-  const handleGrantStaffRole = async () => {
-    if (!organizerOrgId) {
-      showNotification('Organizer organization not found.', 'error');
-      return;
-    }
-    if (!staffEmail.trim()) {
-      showNotification('Enter a user email to grant STAFF role.', 'error');
-      return;
-    }
-    setStaffLoading(true);
-    try {
-      const userId = await UsersService.getApiUsersIdByEmail(staffEmail.trim());
-      await OrganizationService.postApiOrganizationsUsersRolesByName(organizerOrgId, userId, 'STAFF');
-      showNotification('Staff role granted successfully.', 'success');
-      setStaffEmail('');
-    } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to grant staff role.';
-      showNotification(errorMessage, 'error');
-    } finally {
-      setStaffLoading(false);
-    }
-  };
 
   const handleAssignStaffToEvent = async () => {
     if (!staffEmail.trim()) {
@@ -188,8 +167,8 @@ const OrganizerDashboardPage: React.FC = () => {
       setStaffEmail('');
       setSelectedEventId('');
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to assign staff.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể phân công nhân viên');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setStaffLoading(false);
     }
@@ -285,6 +264,7 @@ const OrganizerDashboardPage: React.FC = () => {
                 />
               );
             })}
+            <Tab label="Terms & Conditions" />
           </Tabs>
         </Box>
 
@@ -456,6 +436,24 @@ const OrganizerDashboardPage: React.FC = () => {
             )}
           </TabPanel>
         ))}
+
+        <TabPanel value={tabValue} index={statuses.length + 1}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Terms and Conditions</Typography>
+              <TextField
+                multiline
+                rows={8}
+                fullWidth
+                variant="outlined"
+                value={termsAndConditions}
+                onChange={(e) => setTermsAndConditions(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+              <Button variant="contained" onClick={() => showNotification('Terms saved successfully!', 'success')}>Save Terms</Button>
+            </CardContent>
+          </Card>
+        </TabPanel>
       </Card>
     </Container>
   );

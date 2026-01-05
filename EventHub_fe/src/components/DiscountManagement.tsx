@@ -3,6 +3,7 @@ import { TextField, Button, Grid, Card, CardContent, Typography, List, ListItem,
 import { EventsService } from '../api/services/EventsService';
 import type { Discount } from '../api/models/Discount';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -40,8 +41,8 @@ const DiscountManagement: React.FC<DiscountManagementProps> = ({ eventId }) => {
       const fetchedDiscounts = await EventsService.getApiEventsDiscounts(eventId);
       setDiscounts(fetchedDiscounts);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch discount codes.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách mã giảm giá');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -73,8 +74,8 @@ const DiscountManagement: React.FC<DiscountManagementProps> = ({ eventId }) => {
       setNewDiscount({ code: '', discountPercent: 0, discountAmount: 0, minimumOrderAmount: 0, usageLimit: 0, validFrom: '', validTo: '' });
       fetchDiscounts();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to save discount code.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu mã giảm giá');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -103,8 +104,8 @@ const DiscountManagement: React.FC<DiscountManagementProps> = ({ eventId }) => {
       showNotification('Discount code deleted successfully!', 'success');
       fetchDiscounts();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to delete discount code.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể xóa mã giảm giá');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

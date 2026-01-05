@@ -8,6 +8,7 @@ import PhoneIphoneOutlinedIcon from '@mui/icons-material/PhoneIphoneOutlined';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import { EventsService } from '../api/services/EventsService';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import type { Event } from '../api/models/Event';
 import { EventStatus } from '../api/models/EventStatus';
 import { useNotification } from '../context/NotificationContext';
@@ -41,7 +42,8 @@ const HomePage: React.FC = () => {
         }
         setEvents(fetchedEvents);
       } catch (err: any) {
-        showNotification(err.message || 'Failed to fetch events', 'error');
+        const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện. Vui lòng thử lại sau.');
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
         console.error("Failed to fetch events:", err);
       } finally {
         setLoadingEvents(false);

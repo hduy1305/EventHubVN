@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
 import { motion } from 'framer-motion';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

@@ -1,7 +1,6 @@
 package com.example.event_service.dto;
 
 import com.example.event_service.model.Event;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -56,9 +55,7 @@ public class EventWizardRequest {
     @Data
     public static class Showtime {
         private String code;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime startTime;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime endTime;
     }
 
@@ -69,9 +66,7 @@ public class EventWizardRequest {
         private BigDecimal price;
         private Integer maxQuantity;
         private Integer purchaseLimit;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime saleStart;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime saleEnd;
         private String description;
     }
@@ -81,7 +76,6 @@ public class EventWizardRequest {
         private String code;
         private String zoneName;
         private String ticketTypeCode;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime checkInTime;
     }
 

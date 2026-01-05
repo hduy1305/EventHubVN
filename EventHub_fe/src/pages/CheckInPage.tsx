@@ -7,6 +7,7 @@ import type { CheckInLogDto } from '../api/models/CheckInLogDto';
 import type { TicketResponse } from '../api/models/TicketResponse';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import HistoryIcon from '@mui/icons-material/History';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -168,8 +169,8 @@ const CheckInPage: React.FC = () => {
         : published;
       setAvailableEvents(visibleEvents);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch events.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch events:", err);
     } finally {
       setLoading(false);
@@ -212,8 +213,8 @@ const CheckInPage: React.FC = () => {
       const tickets = await TicketsService.getApiTicketsEvent(eventId);
       setAttendeeTickets(tickets);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch event data.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải thông tin sự kiện');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to fetch event data:", err);
     } finally {
       setLoading(false);
@@ -235,8 +236,8 @@ const CheckInPage: React.FC = () => {
       }
       fetchEventData(parseInt(selectedEventId));
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Check-in failed.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể thực hiện check-in');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Check-in failed:", err);
     } finally {
       setLoading(false);
@@ -259,8 +260,8 @@ const CheckInPage: React.FC = () => {
       showNotification(`Ticket ${scannedTicket.ticketCode} for ${scannedTicket.attendeeName} manually checked in successfully!`, 'success');
       fetchEventData(parseInt(selectedEventId));
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Manual check-in failed.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể thực hiện check-in thủ công');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Manual check-in failed:", err);
     } finally {
       setLoading(false);

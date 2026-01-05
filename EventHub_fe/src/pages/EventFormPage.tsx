@@ -6,6 +6,7 @@ import type { Event } from '../api/models/Event';
 import { EventStatus } from '../api/models/EventStatus';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import TicketTypeBuilder from '../components/TicketTypeBuilder';
 import SeatManagement from '../components/SeatManagement';
 import DiscountManagement from '../components/DiscountManagement';
@@ -61,7 +62,8 @@ const EventFormPage: React.FC = () => {
           });
         })
         .catch(err => {
-          showNotification(err.message || 'Failed to load event for editing.', 'error');
+          const errorData = getErrorMessage(err, 'Không thể tải sự kiện');
+          showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
           console.error("Failed to load event:", err);
         })
         .finally(() => setLoading(false));
@@ -119,8 +121,8 @@ const EventFormPage: React.FC = () => {
       }
       setTimeout(() => navigate('/organizer/dashboard'), 2000);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to save event.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu sự kiện');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to save event:", err);
     } finally {
       setLoading(false);
@@ -136,8 +138,8 @@ const EventFormPage: React.FC = () => {
       // Update local state to reflect new status
       setEventData(prev => ({ ...prev, status: EventStatus.PENDING_APPROVAL }));
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to submit event for approval.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể gửi yêu cầu duyệt');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Failed to submit event:", err);
     } finally {
       setLoading(false);

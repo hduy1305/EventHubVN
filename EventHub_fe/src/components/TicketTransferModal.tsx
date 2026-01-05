@@ -3,6 +3,7 @@ import { Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, C
 import { TicketsService } from '../api/services/TicketsService';
 import { UsersService } from '../api/services/UsersService';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 interface TicketTransferModalProps {
   show: boolean;
@@ -44,8 +45,8 @@ const TicketTransferModal: React.FC<TicketTransferModalProps> = ({
       onTransferSuccess();
       setTimeout(onHide, 2000);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to transfer ticket.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể chuyển vé');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

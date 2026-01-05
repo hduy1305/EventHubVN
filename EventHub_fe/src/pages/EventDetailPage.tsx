@@ -6,6 +6,7 @@ import type { Event } from '../api/models/Event';
 import type { TicketType } from '../api/models/TicketType';
 import { useCart } from '../context/CartContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import { motion } from 'framer-motion';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -47,7 +48,8 @@ const EventDetailPage: React.FC = () => {
         setSelectedQuantities(initialQuantities);
 
       } catch (err: any) {
-        showNotification(err.message || 'Failed to fetch event details.', 'error');
+        const errorData = getErrorMessage(err, 'Không thể tải chi tiết sự kiện');
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
         console.error("Failed to fetch event details:", err);
       } finally {
         setLoading(false);

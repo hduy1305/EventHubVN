@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Container, Typography, CircularProgress, Box, Alert } from '@mui/material';
 import { PaymentsService } from '../api/services/PaymentsService';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const PaymentReturnPage: React.FC = () => {
   const location = useLocation();
@@ -22,9 +23,9 @@ const PaymentReturnPage: React.FC = () => {
         // Redirect to a confirmation page or user's ticket page
         navigate('/my-tickets'); 
       } catch (err: any) {
-        const errorMessage = err.body?.message || err.message || 'An error occurred during payment processing.';
-        setError(errorMessage);
-        showNotification(errorMessage, 'error');
+        const errorData = getErrorMessage(err, 'Thanh toán thất bại');
+        setError(errorData.message);
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       } finally {
         setLoading(false);
       }

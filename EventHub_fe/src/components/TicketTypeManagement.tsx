@@ -3,6 +3,7 @@ import { TextField, Button, Card, CardContent, Typography, List, ListItem, IconB
 import { EventsService } from '../api/services/EventsService';
 import type { TicketType } from '../api/models/TicketType';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Grid from '@mui/material/Grid';
 import EditIcon from '@mui/icons-material/Edit';
@@ -40,8 +41,8 @@ const TicketTypeManagement: React.FC<TicketTypeManagementProps> = ({ eventId }) 
       const fetchedTypes = await EventsService.getApiEventsTicketTypes(eventId);
       setTicketTypes(fetchedTypes);
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to fetch ticket types.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải các loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -74,8 +75,8 @@ const TicketTypeManagement: React.FC<TicketTypeManagementProps> = ({ eventId }) 
       setNewTicketType({ name: '', price: 0, quota: 0, purchaseLimit: 1, startSale: '', endSale: '' });
       fetchTicketTypes();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to save ticket type.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -103,8 +104,8 @@ const TicketTypeManagement: React.FC<TicketTypeManagementProps> = ({ eventId }) 
       showNotification('Ticket type deleted successfully!', 'success');
       fetchTicketTypes();
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to delete ticket type.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể xóa loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

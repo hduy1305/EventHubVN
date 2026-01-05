@@ -14,8 +14,6 @@ import {
   FormControlLabel,
   InputLabel,
   MenuItem,
-  Radio,
-  RadioGroup,
   Select,
   Step,
   StepLabel,
@@ -32,6 +30,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { EventsService } from '../api/services/EventsService';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import {
   EventWizardProvider,
   useEventWizard,
@@ -75,6 +74,41 @@ const EventWizardInner: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [termsAndConditions, setTermsAndConditions] = useState<string>(() => {
+    // Initialize with localStorage value immediately
+    console.log('=== WIZARD INIT START ===');
+    console.log('All localStorage keys:', Object.keys(localStorage));
+    const saved = localStorage.getItem('eventhub_terms_and_conditions');
+    console.log('INIT: Retrieved from localStorage:', saved ? `${saved.length} chars` : 'null');
+    console.log('=== WIZARD INIT END ===');
+    return saved || 'No terms and conditions configured yet. Admin must configure them first.';
+  });
+
+  // Fetch terms and conditions from localStorage (set by admin)
+  // Listen for storage changes (when admin saves terms in another tab or returns to this tab)
+  React.useEffect(() => {
+    console.log('EFFECT: Setting up storage listener');
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      console.log('EFFECT: Storage event detected. Key:', e.key);
+      if (e.key === 'eventhub_terms_and_conditions') {
+        const newValue = e.newValue || 'No terms and conditions configured yet. Admin must configure them first.';
+        console.log('EFFECT: Updating terms to:', newValue);
+        setTermsAndConditions(newValue);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check localStorage when component mounts in case it was updated in the same tab
+    const currentValue = localStorage.getItem('eventhub_terms_and_conditions');
+    if (currentValue) {
+      console.log('EFFECT: Found terms in storage on mount:', currentValue);
+      setTermsAndConditions(currentValue);
+    }
+    
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Fetch event data for editing
   React.useEffect(() => {
@@ -194,7 +228,8 @@ const EventWizardInner: React.FC = () => {
 
         })
         .catch(err => {
-          showNotification('Failed to load event for editing.', 'error');
+          const errorData = getErrorMessage(err, 'Không thể tải sự kiện');
+          showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
           console.error(err);
         })
         .finally(() => setLoading(false));
@@ -441,7 +476,8 @@ const EventWizardInner: React.FC = () => {
       dispatch({ type: 'SET_STATUS', payload: saved.status });
       showNotification('Draft saved successfully.', 'success');
     } catch (err: any) {
-      showNotification(err.body?.message || err.message || 'Failed to save draft.', 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu nháp');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -458,7 +494,8 @@ const EventWizardInner: React.FC = () => {
       setSummaryOpen(true);
       setTimeout(() => navigate('/organizer/dashboard'), 2000);
     } catch (err: any) {
-      showNotification(err.body?.message || err.message || 'Submission failed.', 'error');
+      const errorData = getErrorMessage(err, 'Gửi sự kiện thất bại');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -662,6 +699,12 @@ const EventWizardInner: React.FC = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Permissions</Typography>
+              <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', border: '1px solid #ddd', borderRadius: 1, maxHeight: 300, overflow: 'auto' }}>
+                <Typography variant="subtitle2" gutterBottom fontWeight={600}>Terms and Conditions</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                  {termsAndConditions}
+                </Typography>
+              </Box>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -671,7 +714,6 @@ const EventWizardInner: React.FC = () => {
                 }
                 label="I agree to the terms and conditions"
               />
-              <TextField label="Account Status" value={state.organizerInfo.accountStatus} InputProps={{ readOnly: true }} />
             </CardContent>
           </Card>
         </Box>

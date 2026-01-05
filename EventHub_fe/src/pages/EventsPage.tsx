@@ -5,6 +5,7 @@ import type { Event } from '../api/models/Event';
 import { EventStatus } from '../api/models/EventStatus';
 import { Link as RouterLink } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import { motion } from 'framer-motion';
 import SearchIcon from '@mui/icons-material/Search';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -63,7 +64,8 @@ const EventsPage: React.FC = () => {
         setCurrentPage(prev => Math.max(0, prev - 1));
       } 
     } catch (err: any) {
-      showNotification(err.message || 'Failed to fetch events', 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

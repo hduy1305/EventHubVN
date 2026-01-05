@@ -27,6 +27,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
 import { EventsService } from '../api/services/EventsService';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import type { TicketType } from '../api/models/TicketType';
 import type { Discount } from '../api/models/Discount';
 
@@ -94,7 +95,8 @@ const TicketTypeBuilder: React.FC<TicketTypeBuilderProps> = ({
       const types = await EventsService.getApiEventsTicketTypes(eventId);
       setTicketTypes(types);
     } catch (err: any) {
-      showNotification('Failed to fetch ticket types', 'error');
+      const errorData = getErrorMessage(err, 'Không thể tải các loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -204,7 +206,8 @@ const TicketTypeBuilder: React.FC<TicketTypeBuilderProps> = ({
       setOpenDialog(false);
       fetchTicketTypes();
     } catch (err: any) {
-      showNotification(err.body?.message || 'Failed to save ticket type', 'error');
+      const errorData = getErrorMessage(err, 'Không thể lưu loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }
@@ -219,7 +222,8 @@ const TicketTypeBuilder: React.FC<TicketTypeBuilderProps> = ({
       showNotification('Ticket type deleted', 'success');
       fetchTicketTypes();
     } catch (err: any) {
-      showNotification('Failed to delete ticket type', 'error');
+      const errorData = getErrorMessage(err, 'Không thể xóa loại vé. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setLoading(false);
     }

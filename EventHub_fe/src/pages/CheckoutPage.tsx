@@ -8,6 +8,7 @@ import type { Discount } from '../api/models/Discount';
 import { OrdersService } from '../api/services/OrdersService';
 import type { OrderItemRequest } from '../api/models/OrderItemRequest';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const CheckoutPage: React.FC = () => {
   const { cartItems, getCartTotal, clearCart } = useCart();
@@ -49,8 +50,8 @@ const CheckoutPage: React.FC = () => {
       showNotification('Discount applied successfully!', 'success');
     } catch (err: any) {
       setAppliedDiscount(null);
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Invalid or expired discount code.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Mã giảm giá không hợp lệ hoặc đã hết hạn');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     }
   };
 
@@ -121,13 +122,13 @@ const CheckoutPage: React.FC = () => {
         if (paymentTransaction.paymentUrl) {
           window.location.href = paymentTransaction.paymentUrl;
         } else {
-          showNotification('Failed to get payment URL. Please try again.', 'error');
+          showNotification('Không thể lấy URL thanh toán. Vui lòng thử lại.', 'error');
         }
       }
 
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Checkout failed. Please try again.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Thanh toán thất bại. Vui lòng thử lại.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       console.error("Checkout error:", err);
     } finally {
       setCheckoutLoading(false);

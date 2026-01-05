@@ -6,6 +6,7 @@ import type { Discount } from '../api/models/Discount';
 import { Grid, TextField, Button, Paper, Divider, List, ListItem, ListItemText, Chip } from '@mui/material';
 import type { Event } from '../api/models/Event';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 
 const OrganizerEventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +40,8 @@ const OrganizerEventDetailPage: React.FC = () => {
         const fetchedDiscounts = await EventsService.getApiEventsDiscounts(eventId);
         setDiscounts(fetchedDiscounts);
       } catch (err: any) {
-        showNotification(err.message || 'Failed to fetch event details.', 'error');
+        const errorData = getErrorMessage(err, 'Không thể tải thông tin sự kiện. Vui lòng thử lại sau.');
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
       } finally {
         setLoading(false);
       }
@@ -73,7 +75,8 @@ const OrganizerEventDetailPage: React.FC = () => {
       const updatedDiscounts = await EventsService.getApiEventsDiscounts(eventId);
       setDiscounts(updatedDiscounts);
     } catch (err: any) {
-      showNotification(err.message || 'Failed to create discount code.', 'error');
+      const errorData = getErrorMessage(err, 'Không thể tạo mã giảm giá. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setCreating(false);
     }

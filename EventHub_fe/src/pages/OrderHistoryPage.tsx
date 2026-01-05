@@ -5,6 +5,7 @@ import { OrdersService } from '../api/services/OrdersService';
 import type { OrderResponse } from '../api/models/OrderResponse';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { getErrorMessage, getNotificationSeverity } from '../utils/errorHandler';
 import { motion } from 'framer-motion';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import RefundIcon from '@mui/icons-material/Undo';
@@ -31,7 +32,8 @@ const OrderHistoryPage: React.FC = () => {
         const fetchedOrders = await OrdersService.getApiOrdersUser(user.id);
         setOrders(fetchedOrders);
       } catch (err: any) {
-        showNotification(err.message || 'Failed to fetch your orders.', 'error');
+        const errorData = getErrorMessage(err, 'Không thể tải lịch sử đơn hàng. Vui lòng thử lại sau.');
+        showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
         console.error("Failed to fetch orders:", err);
       } finally {
         setLoading(false);
@@ -59,8 +61,8 @@ const OrderHistoryPage: React.FC = () => {
         setOrders(updatedOrders);
       }
     } catch (err: any) {
-      const errorMessage = err.body?.message || err.response?.data?.message || err.message || 'Failed to request refund.';
-      showNotification(errorMessage, 'error');
+      const errorData = getErrorMessage(err, 'Không thể yêu cầu hoàn tiền. Vui lòng thử lại sau.');
+      showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
     } finally {
       setRefunding(false);
     }

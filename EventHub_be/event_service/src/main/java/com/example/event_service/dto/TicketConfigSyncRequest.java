@@ -1,6 +1,5 @@
 package com.example.event_service.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -19,9 +18,7 @@ public class TicketConfigSyncRequest {
     @Data
     public static class Showtime {
         private String code;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime startTime;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime endTime;
     }
 
@@ -31,9 +28,7 @@ public class TicketConfigSyncRequest {
         private String name;
         private BigDecimal price;
         private Integer maxQuantity;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime saleStart;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime saleEnd;
         private String description;
     }
@@ -43,7 +38,6 @@ public class TicketConfigSyncRequest {
         private String code;
         private String zoneName;
         private String ticketTypeCode;
-        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
         private LocalDateTime checkInTime;
     }
 
