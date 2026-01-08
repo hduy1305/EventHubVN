@@ -90,6 +90,28 @@ public class OrderService {
                     }
                 }
 
+        // Validate purchase limits before proceeding
+        for (Map.Entry<Long, OrderItem> entry : orderItemMap.entrySet()) {
+            Long ticketTypeId = entry.getKey();
+            Integer quantityInOrder = entry.getValue().getQuantity();
+            
+            try {
+                TicketTypeDto ticketType = eventServiceClient.getTicketTypeById(ticketTypeId);
+                
+                if (ticketType.getPurchaseLimit() != null && quantityInOrder > ticketType.getPurchaseLimit()) {
+                    throw new IllegalArgumentException(
+                        String.format("Order exceeds purchase limit for ticket type %s. Max allowed: %d, Requested: %d",
+                            ticketType.getName(), ticketType.getPurchaseLimit(), quantityInOrder)
+                    );
+                }
+                log.info("Validated purchase limit for ticketTypeId: {}, quantity: {}, limit: {}", 
+                    ticketTypeId, quantityInOrder, ticketType.getPurchaseLimit());
+            } catch (Exception e) {
+                log.error("Failed to validate purchase limit for ticketTypeId: {}", ticketTypeId, e);
+                throw new RuntimeException("Failed to validate purchase limit for ticket type: " + ticketTypeId, e);
+            }
+        }
+
         // 3. Apply discount
         DiscountDto appliedDiscount = null;
         if (request.getDiscountCode() != null && !request.getDiscountCode().isEmpty()) {
@@ -395,6 +417,28 @@ public class OrderService {
         // This method could publish a 'resend.tickets' event to Kafka.
     }
 
+    /**
+     * Get total sold count for a ticket type in an event
+     * Only counts PAID orders
+     */
+    public Integer getSoldCountForTicketType(Long eventId, Long ticketTypeId) {
+        // Query both PAID and PENDING orders for testing
+        List<Order> orders = orderRepository.findByEventId(eventId);
+        orders = orders.stream()
+                .filter(o -> o.getStatus() == Order.OrderStatus.PAID || o.getStatus() == Order.OrderStatus.PENDING)
+                .collect(Collectors.toList());
+        
+        Integer totalCount = orders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .filter(item -> item.getTicketTypeId().equals(ticketTypeId))
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+        
+        log.info("getSoldCountForTicketType - eventId: {}, ticketTypeId: {}, totalSold: {}, totalOrders: {}, statuses: PAID+PENDING", 
+            eventId, ticketTypeId, totalCount, orders.size());
+        
+        return totalCount;
+    }
 
     // Removed getTicketsForUser, updateTicketStatus, and transferTicket as they are now in TicketService
 }

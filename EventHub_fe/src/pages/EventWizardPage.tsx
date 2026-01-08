@@ -285,6 +285,77 @@ const EventWizardInner: React.FC = () => {
     description: '',
   });
 
+  // Helper: Format datetime as "YYYY-MM-DDTHH:MM" without timezone
+  const formatLocalDateTime = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Helper: Parse "YYYY-MM-DDTHH:MM" string and add/subtract minutes (timezone-safe)
+  const addMinutesToLocalDateTime = (dateString: string, minutesToAdd: number): string => {
+    const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!match) return dateString;
+    
+    let year = parseInt(match[1], 10);
+    let month = parseInt(match[2], 10);
+    let day = parseInt(match[3], 10);
+    let hours = parseInt(match[4], 10);
+    let minutes = parseInt(match[5], 10);
+    
+    // Add minutes
+    minutes += minutesToAdd;
+    
+    // Handle minute overflow
+    if (minutes >= 60) {
+      hours += Math.floor(minutes / 60);
+      minutes = minutes % 60;
+    } else if (minutes < 0) {
+      const hoursToSubtract = Math.ceil(Math.abs(minutes) / 60);
+      hours -= hoursToSubtract;
+      minutes = minutes + hoursToSubtract * 60;
+    }
+    
+    // Handle hour overflow
+    if (hours >= 24) {
+      day += Math.floor(hours / 24);
+      hours = hours % 24;
+    } else if (hours < 0) {
+      const daysToSubtract = Math.ceil(Math.abs(hours) / 24);
+      day -= daysToSubtract;
+      hours = hours + daysToSubtract * 24;
+    }
+    
+    // Handle day overflow/underflow - Days in month
+    const daysInMonth = (m: number, y: number): number => {
+      if (m === 2) return ((y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0)) ? 29 : 28;
+      return [31, 31, 30, 31, 30, 31, 31, 31, 30, 31, 30, 31][m - 1];
+    };
+    
+    while (day > daysInMonth(month, year)) {
+      day -= daysInMonth(month, year);
+      month++;
+      if (month > 12) {
+        month = 1;
+        year++;
+      }
+    }
+    
+    while (day < 1) {
+      month--;
+      if (month < 1) {
+        month = 12;
+        year--;
+      }
+      day += daysInMonth(month, year);
+    }
+    
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  };
+
   const createTicketDetail = (): WizardTicketDetail => ({
     code: `TK-${String(state.ticketDetails.length + 1).padStart(3, '0')}`,
     zoneName: '',
@@ -297,10 +368,14 @@ const EventWizardInner: React.FC = () => {
     const existingIndex = next.findIndex(
       allocation => allocation.showtimeCode === showtimeCode && allocation.ticketTypeCode === ticketTypeCode
     );
+    // Ensure quantity is stored as number, not string
+    const numQuantity = typeof quantity === 'string' ? parseInt(quantity, 10) : quantity;
+    const finalQuantity = isNaN(numQuantity) ? 0 : numQuantity;
+    
     if (existingIndex >= 0) {
-      next[existingIndex] = { ...next[existingIndex], quantity };
+      next[existingIndex] = { ...next[existingIndex], quantity: finalQuantity };
     } else {
-      next.push({ showtimeCode, ticketTypeCode, quantity });
+      next.push({ showtimeCode, ticketTypeCode, quantity: finalQuantity });
     }
     dispatch({ type: 'SET_ALLOCATIONS', payload: next });
   };
@@ -309,7 +384,30 @@ const EventWizardInner: React.FC = () => {
     const allocation = state.allocations.find(
       item => item.showtimeCode === showtimeCode && item.ticketTypeCode === ticketTypeCode
     );
-    return allocation?.quantity ?? 0;
+    const quantity = allocation?.quantity ?? 0;
+    // Clean leading zeros: convert to int then back
+    const numQty = typeof quantity === 'string' ? parseInt(quantity, 10) || 0 : quantity;
+    return isNaN(numQty) ? 0 : numQty;
+  };
+
+  // Get valid showtime-ticketType pairs from ticket details
+  const getValidAllocations = () => {
+    const validPairs = new Set<string>();
+    state.ticketDetails.forEach(detail => {
+      // Find the showtime that matches this ticket detail's checkInTime
+      const matchingShowtime = state.showtimes.find(s => {
+        const offset = new Date(detail.checkInTime).getTime() - new Date(s.startTime).getTime();
+        return Math.abs(offset) < 3600000; // Within 1 hour
+      });
+      if (matchingShowtime && detail.ticketTypeCode) {
+        validPairs.add(`${matchingShowtime.code}-${detail.ticketTypeCode}`);
+      }
+    });
+    return validPairs;
+  };
+
+  const isValidAllocation = (showtimeCode: string, ticketTypeCode: string) => {
+    return getValidAllocations().has(`${showtimeCode}-${ticketTypeCode}`);
   };
 
   const buildPayload = () => ({
@@ -347,7 +445,7 @@ const EventWizardInner: React.FC = () => {
       code: type.code,
       name: type.name,
       price: type.price,
-      maxQuantity: type.maxQuantity,
+      purchaseLimit: type.maxQuantity, // Max qty = purchase limit (per customer)
       saleStart: type.saleStart,
       saleEnd: type.saleEnd,
       description: type.description,
@@ -487,6 +585,7 @@ const EventWizardInner: React.FC = () => {
     setLoading(true);
     try {
       const payload = buildPayload();
+      console.log('Submitting payload:', JSON.stringify(payload, null, 2));
       const saved = await EventsService.postApiEventsSubmit(payload);
       dispatch({ type: 'SET_EVENT_ID', payload: saved.id });
       dispatch({ type: 'SET_STATUS', payload: saved.status });
@@ -829,12 +928,14 @@ const EventWizardInner: React.FC = () => {
                           type="number"
                           size="small"
                           fullWidth
-                          value={ticketType.price}
+                          value={ticketType.price || ''}
                           onChange={e => {
                             const next = [...state.ticketTypes];
-                            next[index] = { ...ticketType, price: Number(e.target.value) };
+                            const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                            next[index] = { ...ticketType, price: isNaN(value) ? 0 : value };
                             dispatch({ type: 'SET_TICKET_TYPES', payload: next });
                           }}
+                          inputProps={{ step: '0.01', min: 0 }}
                         />
                       </TableCell>
                       <TableCell>
@@ -842,12 +943,14 @@ const EventWizardInner: React.FC = () => {
                           type="number"
                           size="small"
                           fullWidth
-                          value={ticketType.maxQuantity}
+                          value={ticketType.maxQuantity || ''}
                           onChange={e => {
                             const next = [...state.ticketTypes];
-                            next[index] = { ...ticketType, maxQuantity: Number(e.target.value) };
+                            const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                            next[index] = { ...ticketType, maxQuantity: isNaN(value) ? 0 : value };
                             dispatch({ type: 'SET_TICKET_TYPES', payload: next });
                           }}
+                          inputProps={{ min: 0 }}
                         />
                       </TableCell>
                       <TableCell>
@@ -961,17 +1064,94 @@ const EventWizardInner: React.FC = () => {
                         </FormControl>
                       </TableCell>
                       <TableCell>
-                        <TextField
-                          type="datetime-local"
-                          size="small"
-                          value={detail.checkInTime}
-                          onChange={e => {
-                            const next = [...state.ticketDetails];
-                            next[index] = { ...detail, checkInTime: e.target.value };
-                            dispatch({ type: 'SET_TICKET_DETAILS', payload: next });
-                          }}
-                          InputLabelProps={{ shrink: true }}
-                        />
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <InputLabel>Showtime</InputLabel>
+                            <Select
+                              value={(() => {
+                                if (!detail.checkInTime) return '';
+                                // Find exact matching showtime by comparing with start time
+                                const matchingShowtime = state.showtimes.find(s => {
+                                  const offset = new Date(detail.checkInTime).getTime() - new Date(s.startTime).getTime();
+                                  return Math.abs(offset) < 3600000;
+                                });
+                                return matchingShowtime?.code || '';
+                              })()}
+                              label="Showtime"
+                              onChange={e => {
+                                const showtimeCode = e.target.value;
+                                const showtime = state.showtimes.find(s => s.code === showtimeCode);
+                                
+                                if (showtime) {
+                                  // Auto-set checkInTime to 20 minutes before showtime start (timezone-safe)
+                                  const checkInTime = addMinutesToLocalDateTime(showtime.startTime, -20);
+                                  const next = [...state.ticketDetails];
+                                  next[index] = { ...detail, checkInTime };
+                                  dispatch({ type: 'SET_TICKET_DETAILS', payload: next });
+                                }
+                              }}
+                            >
+                              {state.showtimes.map((showtime) => (
+                                <MenuItem key={showtime.code} value={showtime.code}>
+                                  {showtime.code} - {new Date(showtime.startTime).toLocaleString('en-US', {
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          
+                          <TextField
+                            label="Min before"
+                            type="text"
+                            inputMode="numeric"
+                            size="small"
+                            sx={{ width: 100 }}
+                            inputProps={{ pattern: '[0-9]*' }}
+                            value={detail.checkInTime && detail.checkInTime !== '' ? (() => {
+                              const matchedShowtime = state.showtimes.find(s => {
+                                const offset = new Date(detail.checkInTime).getTime() - new Date(s.startTime).getTime();
+                                return Math.abs(offset) < 3600000;
+                              });
+                              if (matchedShowtime) {
+                                const minutes = Math.round((new Date(matchedShowtime.startTime).getTime() - new Date(detail.checkInTime).getTime()) / 60000);
+                                return Math.max(0, minutes).toString();
+                              }
+                              return '20';
+                            })() : '20'}
+                            onChange={e => {
+                              // Remove leading zeros
+                              let value = e.target.value.replace(/[^0-9]/g, '');
+                              value = value.replace(/^0+/, '') || '0';
+                              const minutes = parseInt(value, 10);
+
+                              const matchedShowtime = state.showtimes.find(s => {
+                                // Compare using string parsing, not Date objects
+                                const offsetMatch = detail.checkInTime.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+                                const startMatch = s.startTime.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+                                if (!offsetMatch || !startMatch) return false;
+                                
+                                const offsetMinutes = parseInt(offsetMatch[4], 10) * 60 + parseInt(offsetMatch[5], 10) -
+                                                     (parseInt(startMatch[4], 10) * 60 + parseInt(startMatch[5], 10));
+                                const dayDiff = parseInt(offsetMatch[3], 10) - parseInt(startMatch[3], 10);
+                                const totalOffsetMinutes = dayDiff * 24 * 60 + offsetMinutes;
+                                return Math.abs(totalOffsetMinutes) < 60;
+                              });
+                              
+                              if (matchedShowtime) {
+                                // Calculate checkInTime as (startTime - minutes)
+                                const checkInTime = addMinutesToLocalDateTime(matchedShowtime.startTime, -minutes);
+                                const next = [...state.ticketDetails];
+                                next[index] = { ...detail, checkInTime };
+                                dispatch({ type: 'SET_TICKET_DETAILS', payload: next });
+                              }
+                            }}
+                          />
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Button
@@ -1007,16 +1187,36 @@ const EventWizardInner: React.FC = () => {
                   {state.showtimes.map(showtime => (
                     <TableRow key={showtime.code}>
                       <TableCell>{showtime.code}</TableCell>
-                      {state.ticketTypes.map(type => (
-                        <TableCell key={`${showtime.code}-${type.code}`}>
-                          <TextField
-                            type="number"
-                            size="small"
-                            value={getAllocationValue(showtime.code, type.code)}
-                            onChange={e => updateAllocation(showtime.code, type.code, Number(e.target.value))}
-                          />
-                        </TableCell>
-                      ))}
+                      {state.ticketTypes.map(type => {
+                        const isValid = isValidAllocation(showtime.code, type.code);
+                        return (
+                          <TableCell key={`${showtime.code}-${type.code}`}>
+                            <TextField
+                              type="text"
+                              size="small"
+                              inputMode="numeric"
+                              value={Math.max(0, getAllocationValue(showtime.code, type.code)).toString()}
+                              onChange={e => {
+                                // Only allow digits
+                                let value = e.target.value.replace(/[^0-9]/g, '');
+                                // Remove leading zeros
+                                value = value.replace(/^0+/, '') || '0';
+                                const quantity = parseInt(value, 10);
+                                updateAllocation(showtime.code, type.code, isNaN(quantity) ? 0 : quantity);
+                              }}
+                              inputProps={{ pattern: '[0-9]*' }}
+                              disabled={!isValid}
+                              title={!isValid ? `Please add a ticket detail for ${showtime.code} + ${type.name || type.code} first` : ''}
+                              sx={{
+                                '& .MuiOutlinedInput-root.Mui-disabled': {
+                                  backgroundColor: '#f5f5f5',
+                                  cursor: 'not-allowed'
+                                }
+                              }}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>

@@ -86,4 +86,22 @@ export class UsersService {
             },
         });
     }
+
+    /**
+     * Get assigned events for a user (staff)
+     * @param userId
+     * @returns number[]
+     * @throws ApiError
+     */
+    public static getApiUsersAssignedEvents(
+        userId: string,
+    ): CancelablePromise<Array<number>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/users/{userId}/assigned-events',
+            path: {
+                'userId': userId,
+            },
+        });
+    }
 }

@@ -93,4 +93,13 @@ public class OrderController {
         orderService.resendTicketsForOrder(orderId, recipientEmail);
         return ResponseEntity.noContent().build();
     }
+
+    // Endpoint for event service to check sold count (no auth required - internal call)
+    @GetMapping("/event/{eventId}/ticket-type/{ticketTypeId}/sold-count")
+    public ResponseEntity<Integer> getSoldCountForTicketType(
+            @PathVariable Long eventId,
+            @PathVariable Long ticketTypeId) {
+        Integer soldCount = orderService.getSoldCountForTicketType(eventId, ticketTypeId);
+        return ResponseEntity.ok(soldCount);
+    }
 }

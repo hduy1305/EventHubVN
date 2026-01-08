@@ -3,6 +3,7 @@ package com.example.event_service.service;
 import com.example.event_service.dto.EventTransferPolicyDto;
 import com.example.event_service.dto.EventWizardRequest;
 import com.example.event_service.dto.ReservationDto;
+import com.example.event_service.dto.TicketTypeWithShowtimesDto;
 import com.example.event_service.dto.TicketConfigSyncRequest;
 import com.example.event_service.feign_client.OrderServiceClient;
 import com.example.event_service.feign_client.TicketServiceClient;
@@ -361,7 +362,7 @@ public class EventService {
                     .code(ticketTypeRequest.getCode())
                     .name(ticketTypeRequest.getName())
                     .price(ticketTypeRequest.getPrice())
-                    .quota(ticketTypeRequest.getMaxQuantity())
+                    .quota(0) // Will be calculated from allocations
                     .purchaseLimit(ticketTypeRequest.getPurchaseLimit())
                     .startSale(ticketTypeRequest.getSaleStart())
                     .endSale(ticketTypeRequest.getSaleEnd())
@@ -491,6 +492,68 @@ public class EventService {
         }
         if (request.getTicketTypes() == null || request.getTicketTypes().isEmpty()) {
             throw new RuntimeException("At least one ticket type is required.");
+        }
+        
+        // Validate ticket details
+        validateTicketDetails(request);
+    }
+
+    private void validateTicketDetails(EventWizardRequest request) {
+        if (request.getTicketDetails() == null || request.getTicketDetails().isEmpty()) {
+            return;
+        }
+
+        List<EventWizardRequest.Showtime> showtimes = request.getShowtimes();
+        Set<String> showtimeCodes = showtimes.stream().map(EventWizardRequest.Showtime::getCode).collect(Collectors.toSet());
+        Map<String, LocalDateTime> showtimeStartTimes = showtimes.stream()
+                .collect(Collectors.toMap(EventWizardRequest.Showtime::getCode, EventWizardRequest.Showtime::getStartTime));
+        
+        System.out.println("DEBUG: Validating ticket details. Showtimes: " + showtimeStartTimes);
+
+        Set<String> ticketCodes = new java.util.HashSet<>();
+
+        for (EventWizardRequest.TicketDetail detail : request.getTicketDetails()) {
+            System.out.println("DEBUG: Processing ticket detail: code=" + detail.getCode() + ", checkInTime=" + detail.getCheckInTime());
+            // 1. Validate ticket code is unique
+            if (ticketCodes.contains(detail.getCode())) {
+                throw new RuntimeException("Ticket code '" + detail.getCode() + "' is duplicated. Each ticket must have a unique code.");
+            }
+            ticketCodes.add(detail.getCode());
+
+            // 2. Validate checkInTime is not null
+            if (detail.getCheckInTime() == null) {
+                throw new RuntimeException("Check-in time is required for ticket " + detail.getCode());
+            }
+
+            // 3. Validate checkInTime is within 60 minutes before and at/after one of the showtimes
+            boolean isValidCheckInTime = false;
+            String matchedShowtime = null;
+            
+            System.out.println("DEBUG: Checking ticket " + detail.getCode() + " with checkInTime " + detail.getCheckInTime());
+            for (Map.Entry<String, LocalDateTime> entry : showtimeStartTimes.entrySet()) {
+                LocalDateTime startTime = entry.getValue();
+                LocalDateTime earliestCheckIn = startTime.minusMinutes(60);
+                
+                System.out.println("  - Checking against " + entry.getKey() + ": startTime=" + startTime + 
+                                 ", earliestCheckIn=" + earliestCheckIn + 
+                                 ", isBefore=" + detail.getCheckInTime().isBefore(earliestCheckIn) +
+                                 ", isAfter=" + detail.getCheckInTime().isAfter(startTime));
+                
+                // checkInTime must be between (startTime - 60 minutes) and startTime
+                if (!detail.getCheckInTime().isBefore(earliestCheckIn) && !detail.getCheckInTime().isAfter(startTime)) {
+                    isValidCheckInTime = true;
+                    matchedShowtime = entry.getKey();
+                    break;
+                }
+            }
+            
+            if (!isValidCheckInTime) {
+                String validTimes = showtimeStartTimes.entrySet().stream()
+                        .map(e -> e.getKey() + " (between " + e.getValue().minusMinutes(60) + " and " + e.getValue() + ")")
+                        .collect(Collectors.joining(", "));
+                throw new RuntimeException("Check-in time for ticket " + detail.getCode() 
+                        + " must be within 60 minutes before to start of a showtime. Valid windows: " + validTimes);
+            }
         }
     }
 
@@ -681,5 +744,93 @@ public class EventService {
     public Page<Event> searchEvents(String keyword, String category, LocalDateTime startTime, LocalDateTime endTime, BigDecimal minPrice, BigDecimal maxPrice, String location, Event.Status status, Pageable pageable) {
         Specification<Event> spec = EventSpecification.withFilters(keyword, category, startTime, endTime, minPrice, maxPrice, location, status);
         return eventRepository.findAll(spec, pageable);
+    }
+
+    public List<TicketTypeWithShowtimesDto> getTicketTypesWithShowtimes(Long eventId) {
+        Event event = getById(eventId);
+        List<TicketType> ticketTypes = event.getTicketTypes();
+        List<EventShowtime> showtimes = event.getShowtimes();
+
+        return ticketTypes.stream().map(ticketType -> {
+            // Get sold count for this ticket type across all showtimes
+            Integer totalSoldQty = 0;
+            try {
+                Integer soldCount = orderServiceClient.getSoldCountForTicketType(eventId, ticketType.getId());
+                totalSoldQty = soldCount != null ? soldCount : 0;
+                log.info("Successfully fetched sold count for ticketTypeId: {}, eventId: {}, count: {}", 
+                    ticketType.getId(), eventId, totalSoldQty);
+            } catch (Exception e) {
+                log.warn("Failed to get sold count for ticketTypeId: {} in eventId: {}, defaulting to 0. Error: {} | Cause: {}", 
+                    ticketType.getId(), eventId, e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "none", e);
+                totalSoldQty = 0; // Default to 0 if service call fails
+            }
+
+            // Calculate total allocated for this ticket type
+            Integer totalAllocated = showtimes.stream()
+                    .flatMap(s -> s.getAllocations().stream())
+                    .filter(a -> a.getTicketType().getId().equals(ticketType.getId()))
+                    .mapToInt(ShowtimeTicketAllocation::getQuantity)
+                    .sum();
+
+            final Integer totalSoldForTicketType = totalSoldQty;
+            
+            List<TicketTypeWithShowtimesDto.ShowtimeAvailabilityDto> showtimeAvailabilities = showtimes.stream()
+                    .map(showtime -> {
+                        // Find allocation for this showtime-ticketType pair
+                        ShowtimeTicketAllocation allocation = showtime.getAllocations().stream()
+                                .filter(a -> a.getTicketType().getId().equals(ticketType.getId()))
+                                .findFirst()
+                                .orElse(null);
+
+                        Integer allocatedQty = allocation != null ? allocation.getQuantity() : 0;
+                        
+                        // Distribute total sold quantity proportionally to each showtime
+                        // If no allocations, proportion = 0
+                        Integer soldQty = totalAllocated > 0 ? 
+                                Math.round((float) totalSoldForTicketType * allocatedQty / totalAllocated) : 0;
+                        
+                        Integer reservedQty = 0; // TODO: Get from cart/pending orders if needed
+
+                        return TicketTypeWithShowtimesDto.ShowtimeAvailabilityDto.builder()
+                                .showtimeId(showtime.getId())
+                                .showtimeCode(showtime.getCode())
+                                .startTime(showtime.getStartTime())
+                                .endTime(showtime.getEndTime())
+                                .allocatedQuantity(allocatedQty)
+                                .soldQuantity(soldQty)
+                                .reservedQuantity(reservedQty)
+                                .build();
+                    })
+                    .filter(s -> s.getAllocatedQuantity() > 0) // Only show showtimes with allocation for this ticket type
+                    .collect(Collectors.toList());
+
+            return TicketTypeWithShowtimesDto.builder()
+                    .id(ticketType.getId())
+                    .code(ticketType.getCode())
+                    .name(ticketType.getName())
+                    .price(ticketType.getPrice())
+                    .quota(ticketType.getQuota()) // Total quota from ticket_types table
+                    .purchaseLimit(ticketType.getPurchaseLimit())
+                    .saleStart(ticketType.getStartSale())
+                    .saleEnd(ticketType.getEndSale())
+                    .description(ticketType.getDescription())
+                    .showtimes(showtimeAvailabilities)
+                    .build();
+        })
+        .filter(tt -> !tt.getShowtimes().isEmpty()) // Only show ticket types with available showtimes
+        .collect(Collectors.toList());
+    }
+
+    // Debug method to test OrderServiceClient
+    public Integer testGetSoldCountFromOrderService(Long eventId, Long ticketTypeId) {
+        log.info("testGetSoldCountFromOrderService called - eventId: {}, ticketTypeId: {}", eventId, ticketTypeId);
+        try {
+            Integer count = orderServiceClient.getSoldCountForTicketType(eventId, ticketTypeId);
+            log.info("Successfully got sold count from order service: {}", count);
+            return count;
+        } catch (Exception e) {
+            log.error("Failed to call orderServiceClient.getSoldCountForTicketType", e);
+            throw e;
+        }
     }
 }

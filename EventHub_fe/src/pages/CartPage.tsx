@@ -10,16 +10,16 @@ const CartPage: React.FC = () => {
   const { cartItems, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart();
   const { showNotification } = useNotification();
 
-  const handleUpdateQuantity = (ticketTypeId: number, event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleUpdateQuantity = (ticketTypeId: number, showtimeCode: string | undefined, event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const newQuantity = parseInt(event.target.value);
     if (!isNaN(newQuantity) && newQuantity >= 0) {
-      updateQuantity(ticketTypeId, newQuantity);
+      updateQuantity(ticketTypeId, newQuantity, undefined, showtimeCode);
       showNotification('Cart item quantity updated.', 'info', 1000);
     }
   };
 
-  const handleRemoveItem = (ticketTypeId: number) => {
-    removeFromCart(ticketTypeId);
+  const handleRemoveItem = (ticketTypeId: number, showtimeCode: string | undefined) => {
+    removeFromCart(ticketTypeId, undefined, showtimeCode);
     showNotification('Item removed from cart.', 'info', 1000);
   };
 
@@ -52,6 +52,11 @@ const CartPage: React.FC = () => {
                     <Typography variant="subtitle2" fontWeight="600" sx={{ mt: 0.5, mb: 0.5 }}>
                       {item.ticketTypeName}
                     </Typography>
+                    {item.showtimeName && (
+                      <Typography variant="body2" color="primary" sx={{ mb: 0.5 }}>
+                        Showtime: {item.showtimeName}
+                      </Typography>
+                    )}
                     {item.description && (
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, maxWidth: '400px' }}>
                         {item.description}
@@ -76,13 +81,13 @@ const CartPage: React.FC = () => {
                       size="small"
                       inputProps={{ min: 0 }}
                       value={item.quantity}
-                      onChange={(e) => handleUpdateQuantity(item.ticketTypeId, e)}
+                      onChange={(e) => handleUpdateQuantity(item.ticketTypeId, item.showtimeCode, e)}
                       sx={{ width: '80px' }}
                     />
                     <Typography variant="subtitle1" fontWeight="bold" sx={{ minWidth: '80px', textAlign: 'right' }}>
                       ${(item.price * item.quantity).toFixed(2)}
                     </Typography>
-                    <IconButton color="error" onClick={() => handleRemoveItem(item.ticketTypeId)}>
+                    <IconButton color="error" onClick={() => handleRemoveItem(item.ticketTypeId, item.showtimeCode)}>
                       <DeleteIcon />
                     </IconButton>
                   </Box>

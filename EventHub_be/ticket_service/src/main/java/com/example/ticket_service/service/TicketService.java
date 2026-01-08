@@ -200,4 +200,8 @@ public class TicketService {
         }
         return response;
     }
+
+    public Long countUserTicketsByType(String userId, Long ticketTypeId) {
+        return ticketRepository.countByUserIdAndTicketTypeId(userId, ticketTypeId);
+    }
 }

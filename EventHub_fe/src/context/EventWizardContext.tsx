@@ -183,7 +183,14 @@ function wizardReducer(state: EventWizardState, action: WizardAction): EventWiza
     case 'SET_TICKET_DETAILS':
       return { ...state, ticketDetails: action.payload };
     case 'SET_ALLOCATIONS':
-      return { ...state, allocations: action.payload };
+      // Ensure all quantities are numbers, not strings
+      return { 
+        ...state, 
+        allocations: action.payload.map(a => ({
+          ...a,
+          quantity: typeof a.quantity === 'string' ? parseInt(a.quantity, 10) || 0 : (isNaN(a.quantity) ? 0 : a.quantity)
+        }))
+      };
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.payload } };
     case 'UPDATE_PAYOUT':

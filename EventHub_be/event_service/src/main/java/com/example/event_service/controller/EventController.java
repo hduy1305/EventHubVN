@@ -1,6 +1,7 @@
 package com.example.event_service.controller;
 
 import com.example.event_service.dto.EventWizardRequest;
+import com.example.event_service.dto.TicketTypeWithShowtimesDto;
 import com.example.event_service.model.Discount;
 import com.example.event_service.model.Event;
 import com.example.event_service.model.Seat;
@@ -46,6 +47,11 @@ public class EventController {
     @GetMapping("/{id}")
     public ResponseEntity<Event> getById(@PathVariable Long id) {
         return ResponseEntity.ok(eventService.getById(id));
+    }
+
+    @GetMapping("/{id}/tickets-with-showtimes")
+    public ResponseEntity<List<TicketTypeWithShowtimesDto>> getTicketsWithShowtimes(@PathVariable Long id) {
+        return ResponseEntity.ok(eventService.getTicketTypesWithShowtimes(id));
     }
 
     @PreAuthorize("hasAnyRole('ORGANIZER','ADMIN')")
@@ -175,32 +181,6 @@ public class EventController {
     }
 
 
-    // Seat management endpoints
-    @PreAuthorize("hasAnyRole('ORGANIZER','ADMIN')")
-    @PostMapping("/{eventId}/seats")
-    public ResponseEntity<List<Seat>> addSeatsToEvent(@PathVariable Long eventId, @RequestBody List<Seat> seats) {
-        return ResponseEntity.ok(eventService.addSeatsToEvent(eventId, seats));
-    }
-
-    @GetMapping("/{eventId}/seats")
-    public ResponseEntity<List<Seat>> getSeatsForEvent(@PathVariable Long eventId) {
-        return ResponseEntity.ok(eventService.getSeatsForEvent(eventId));
-    }
-
-    @PreAuthorize("hasAnyRole('ORGANIZER','ADMIN')")
-    @PutMapping("/seats/{seatId}/availability")
-    public ResponseEntity<Void> updateSeatAvailability(@PathVariable Long seatId, @RequestParam Boolean isAvailable) {
-        eventService.updateSeatAvailability(seatId, isAvailable);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PreAuthorize("hasAnyRole('ORGANIZER','ADMIN')")
-    @PutMapping("/seats/{seatId}/lock")
-    public ResponseEntity<Void> updateSeatLockStatus(@PathVariable Long seatId, @RequestParam Boolean locked) {
-        eventService.updateSeatLockStatus(seatId, locked);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping("/search")
     public ResponseEntity<Page<Event>> searchEvents(
             @RequestParam(required = false) String keyword,
@@ -214,5 +194,18 @@ public class EventController {
             Pageable pageable) {
         Page<Event> events = eventService.searchEvents(keyword, category, startTime, endTime, minPrice, maxPrice, location, status, pageable);
         return ResponseEntity.ok(events);
+    }
+
+    // Debug endpoint to test OrderServiceClient
+    @GetMapping("/{eventId}/ticket-type/{ticketTypeId}/test-sold-count")
+    public ResponseEntity<Integer> testGetSoldCount(
+            @PathVariable Long eventId,
+            @PathVariable Long ticketTypeId) {
+        try {
+            Integer count = eventService.testGetSoldCountFromOrderService(eventId, ticketTypeId);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(null);
+        }
     }
 }

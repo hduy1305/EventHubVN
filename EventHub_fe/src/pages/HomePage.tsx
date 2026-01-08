@@ -23,10 +23,16 @@ const HomePage: React.FC = () => {
     const fetchEvents = async () => {
       setLoadingEvents(true);
       try {
+        const now = new Date();
+        // Convert to LocalDateTime format (without timezone) for backend
+        const localDateTime = activeTab === 'upcoming' 
+          ? now.toISOString().slice(0, 19) // Remove timezone part: 2026-01-08T17:39:32
+          : undefined;
+        
         const response = await EventsService.getApiEventsSearch(
           undefined, // keyword
           undefined, // category
-          undefined, // startTime
+          localDateTime, // startTime - only upcoming events start from now
           undefined, // endTime
           undefined, // minPrice
           undefined, // maxPrice
@@ -36,10 +42,19 @@ const HomePage: React.FC = () => {
           6
         );
         let fetchedEvents = response.content || [];
+        
         if (activeTab === 'popular') {
-          // Placeholder for popularity: shuffle the fetched events
+          // For popular: shuffle to simulate popularity (later can sort by ticket sales)
           fetchedEvents = fetchedEvents.sort(() => Math.random() - 0.5);
+        } else {
+          // For upcoming: sort by startTime ascending (soonest first)
+          fetchedEvents = fetchedEvents.sort((a, b) => {
+            const dateA = a.startTime ? new Date(a.startTime).getTime() : 0;
+            const dateB = b.startTime ? new Date(b.startTime).getTime() : 0;
+            return dateA - dateB;
+          });
         }
+        
         setEvents(fetchedEvents);
       } catch (err: any) {
         const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện. Vui lòng thử lại sau.');
@@ -292,7 +307,7 @@ const HomePage: React.FC = () => {
                     <CardMedia
                       component="img"
                       height="220"
-                      image={event.coverImage || 'https://via.placeholder.com/400x220?text=Event'}
+                      image={event.bannerUrl || event.coverImage || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="220"%3E%3Crect width="400" height="220" fill="%23ddd"/%3E%3Ctext x="50%25" y="50%25" font-size="20" text-anchor="middle" dy=".3em" fill="%23999"%3EEvent%3C/text%3E%3C/svg%3E'}
                       alt={event.name}
                       sx={{ filter: 'brightness(0.95)' }}
                     />

@@ -32,6 +32,9 @@ payment:
 auth:
   service-url: http://localhost:8081 # URL for the auth service
 
+ticket:
+  service-url: http://localhost:8086 # URL for the ticket service
+
 logging: # Added logging configuration
   level:
     root: INFO

@@ -83,4 +83,12 @@ public class TicketController {
     public ResponseEntity<List<CheckInLogDto>> getCheckInLogs(@PathVariable Long eventId) {
         return ResponseEntity.ok(ticketService.getCheckInLogsForEvent(eventId));
     }
+
+    @GetMapping("/user/{userId}/ticket-type/{ticketTypeId}/count")
+    public ResponseEntity<Long> countUserTicketsByType(
+            @PathVariable String userId,
+            @PathVariable Long ticketTypeId) {
+        Long count = ticketService.countUserTicketsByType(userId, ticketTypeId);
+        return ResponseEntity.ok(count);
+    }
 }

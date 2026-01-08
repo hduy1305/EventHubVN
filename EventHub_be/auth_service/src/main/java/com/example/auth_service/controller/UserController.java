@@ -96,6 +96,31 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN','ORGANIZER')")
     public ResponseEntity<Void> assignStaffToEvent(@PathVariable String userId, @PathVariable Long eventId, Authentication auth) {
         UUID staffUuid = UUID.fromString(userId);
+        
+        // Validation: Check if user exists
+        User user = userRepository.findById(staffUuid)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        
+        // Validation: Check if user has STAFF role in any organization
+        List<UserOrganizationRole> staffRoles = userOrganizationRoleRepository.findByUserId(staffUuid)
+                .stream()
+                .filter(uor -> "STAFF".equals(uor.getRole().getName()))
+                .toList();
+        
+        if (staffRoles.isEmpty()) {
+            throw new RuntimeException("User must have STAFF role in an organization before assigning to event. " +
+                    "Please assign STAFF role first using the organization management endpoint.");
+        }
+        
+        // Check if staff is already assigned to this event
+        boolean alreadyAssigned = staffEventAssignmentRepository
+                .findByStaffIdAndEventId(staffUuid, eventId)
+                .isPresent();
+        
+        if (alreadyAssigned) {
+            throw new RuntimeException("User is already assigned to this event.");
+        }
+        
         UUID assignedBy = null;
         if (auth != null && auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails principal) {
             try {

@@ -35,7 +35,6 @@ import EventWizardPage from './pages/EventWizardPage';
 import OrganizerOrdersPage from './pages/OrganizerOrdersPage';
 import OrganizerReportsPage from './pages/OrganizerReportsPage';
 import CheckInPage from './pages/CheckInPage';
-import AdminSupportPage from './pages/AdminSupportPage';
 import AdminContentManagementPage from './pages/AdminContentManagementPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
 import OrganizerEventDetailPage from './pages/OrganizerEventDetailPage';
@@ -91,7 +90,6 @@ const AppContent: React.FC = () => {
         <Route element={<ProtectedRoute allowedRoles={['ROLE_ADMIN']} />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/events" element={<AdminEventApprovalPage />} />
-          <Route path="/admin/support" element={<AdminSupportPage />} />
           <Route path="/admin/content" element={<AdminContentManagementPage />} />
         </Route>
 

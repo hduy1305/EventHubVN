@@ -163,6 +163,11 @@ const CheckoutPage: React.FC = () => {
                         <Typography variant="subtitle2" color="primary" sx={{ mt: 0.5 }}>
                           {item.ticketTypeName}
                         </Typography>
+                        {item.showtimeName && (
+                          <Typography variant="body2" color="secondary" sx={{ mt: 0.5 }}>
+                            Showtime: {item.showtimeName}
+                          </Typography>
+                        )}
                         {item.description && (
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: '300px' }}>
                             {item.description}

@@ -129,6 +129,24 @@ export class EventsService {
             },
         });
     }
+
+    /**
+     * Get ticket types with showtimes and availability
+     * @param id
+     * @returns TicketTypeWithShowtimes[] List of ticket types with showtimes
+     * @throws ApiError
+     */
+    public static getApiEventsTicketsWithShowtimes(
+        id: number,
+    ): CancelablePromise<any[]> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/events/{id}/tickets-with-showtimes',
+            path: {
+                'id': id,
+            },
+        });
+    }
     /**
      * Update event
      * @param id

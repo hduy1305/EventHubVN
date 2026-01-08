@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Grid, Card, CardContent, Button, TextField, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Box, CircularProgress, Typography, Alert, Stack, Tooltip } from '@mui/material';
 import { EventsService } from '../api/services/EventsService';
 import { TicketsService } from '../api/services/TicketsService';
+import { UsersService } from '../api/services/UsersService';
 import type { Event } from '../api/models/Event';
 import type { CheckInLogDto } from '../api/models/CheckInLogDto';
 import type { TicketResponse } from '../api/models/TicketResponse';
@@ -164,9 +165,21 @@ const CheckInPage: React.FC = () => {
       const response = await EventsService.getApiEventsSearch(undefined, undefined, undefined, undefined, undefined, undefined, 'PUBLISHED', undefined, 0, 100);
       const allEvents = response.content || [];
       const published = allEvents.filter(event => event.status === 'PUBLISHED');
-      const visibleEvents = isOrganizer && !isAdmin
-        ? published.filter(event => event.organizerId === user?.id)
-        : published;
+      
+      let visibleEvents: Event[] = [];
+      
+      if (isAdmin) {
+        // Admin sees all published events
+        visibleEvents = published;
+      } else if (isOrganizer) {
+        // Organizer sees only their own events
+        visibleEvents = published.filter(event => event.organizerId === user?.id);
+      } else {
+        // Staff sees only events assigned to them
+        const assignedEventIds = await UsersService.getApiUsersAssignedEvents(user?.id || '');
+        visibleEvents = published.filter(event => assignedEventIds.includes(event.id || 0));
+      }
+      
       setAvailableEvents(visibleEvents);
     } catch (err: any) {
       const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện');

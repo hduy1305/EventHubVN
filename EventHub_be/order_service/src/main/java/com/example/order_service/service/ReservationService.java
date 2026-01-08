@@ -3,6 +3,7 @@ package com.example.order_service.service;
 import com.example.order_service.dto.ReservationRequest;
 import com.example.order_service.dto.TicketTypeDto;
 import com.example.order_service.feign_client.EventServiceClient;
+import com.example.order_service.feign_client.TicketServiceClient;
 import com.example.order_service.model.Reservation;
 import com.example.order_service.model.Reservation.ReservationStatus;
 import com.example.order_service.repository.ReservationRepository;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final EventServiceClient eventServiceClient;
+    private final TicketServiceClient ticketServiceClient;
 
     @Transactional
     public Reservation reserve(ReservationRequest request) {
@@ -37,25 +39,33 @@ public class ReservationService {
             }
         }
 
-        // TODO: Re-implement purchase limit check by communicating with ticket_service
         // Check purchase limit
-        // TicketTypeDto ticketType = eventServiceClient.getTicketTypeById(request.getTicketTypeId());
-        // if (ticketType.getPurchaseLimit() != null && ticketType.getPurchaseLimit() > 0) {
-        //     // Count already purchased tickets
-        //     Long purchasedCount = 0L; // ticketRepository.countByOrderItem_Order_UserIdAndOrderItem_TicketTypeId(request.getUserId(), request.getTicketTypeId());
-        //     if (purchasedCount == null) purchasedCount = 0L;
+        TicketTypeDto ticketType = eventServiceClient.getTicketTypeById(request.getTicketTypeId());
+        if (ticketType.getPurchaseLimit() != null && ticketType.getPurchaseLimit() > 0) {
+            // Count already purchased tickets
+            Long purchasedCount = ticketServiceClient.countUserTicketsByType(request.getUserId().toString(), request.getTicketTypeId());
+            if (purchasedCount == null) purchasedCount = 0L;
 
-        //     // Count pending reservations
-        //     List<Reservation> userReservations = reservationRepository.findByUserIdAndStatusAndExpireAtAfter(request.getUserId(), ReservationStatus.PENDING, LocalDateTime.now());
-        //     long reservedCount = userReservations.stream()
-        //             .filter(r -> r.getTicketTypeId().equals(request.getTicketTypeId()))
-        //             .mapToInt(Reservation::getQuantity)
-        //             .sum();
+            // Count pending reservations
+            List<Reservation> userReservations = reservationRepository.findByUserIdAndStatusAndExpireAtAfter(request.getUserId(), ReservationStatus.PENDING, LocalDateTime.now());
+            long reservedCount = userReservations.stream()
+                    .filter(r -> r.getTicketTypeId().equals(request.getTicketTypeId()))
+                    .mapToInt(Reservation::getQuantity)
+                    .sum();
 
-        //     if (purchasedCount + reservedCount + request.getQuantity() > ticketType.getPurchaseLimit()) {
-        //          throw new RuntimeException("Purchase limit exceeded. Limit is " + ticketType.getPurchaseLimit());
-        //     }
-        // }
+            if (purchasedCount + reservedCount + request.getQuantity() > ticketType.getPurchaseLimit()) {
+                throw new RuntimeException("Purchase limit exceeded. Limit is " + ticketType.getPurchaseLimit() + ". You have already bought/reserved " + (purchasedCount + reservedCount) + " tickets.");
+            }
+        }
+
+        // Check sale time window
+        LocalDateTime now = LocalDateTime.now();
+        if (ticketType.getStartSale() != null && now.isBefore(ticketType.getStartSale())) {
+            throw new RuntimeException("Sale for this ticket type has not started yet. Sales start at: " + ticketType.getStartSale());
+        }
+        if (ticketType.getEndSale() != null && now.isAfter(ticketType.getEndSale())) {
+            throw new RuntimeException("Sale for this ticket type has ended. Sales ended at: " + ticketType.getEndSale());
+        }
 
         Reservation res = Reservation.builder()
                 .userId(request.getUserId())
@@ -137,36 +147,44 @@ public class ReservationService {
             throw new IllegalArgumentException("Quantity must be positive.");
         }
 
-        // TODO: Re-implement purchase limit check by communicating with ticket_service
-        // --- Purchase Limit Check (similar to reserve method) ---
-        // TicketTypeDto ticketType = eventServiceClient.getTicketTypeById(ticketTypeId);
-        // if (ticketType.getPurchaseLimit() != null && ticketType.getPurchaseLimit() > 0) {
-        //     Long purchasedCount = 0L; // ticketRepository.countByOrderItem_Order_UserIdAndOrderItem_TicketTypeId(userId, ticketTypeId);
-        //     if (purchasedCount == null) purchasedCount = 0L;
+        // --- Purchase Limit Check ---
+        TicketTypeDto ticketType = eventServiceClient.getTicketTypeById(ticketTypeId);
+        if (ticketType.getPurchaseLimit() != null && ticketType.getPurchaseLimit() > 0) {
+            Long purchasedCount = ticketServiceClient.countUserTicketsByType(userId.toString(), ticketTypeId);
+            if (purchasedCount == null) purchasedCount = 0L;
 
-        //     // First, check if a PENDING reservation already exists for this item
-        //     Optional<Reservation> existingCartItemCheck = reservationRepository.findByUserIdAndEventIdAndTicketTypeIdAndSeatIdAndStatus(
-        //             userId, eventId, ticketTypeId, seatId, ReservationStatus.PENDING
-        //     );
+            // First, check if a PENDING reservation already exists for this item
+            Optional<Reservation> existingCartItemCheck = reservationRepository.findByUserIdAndEventIdAndTicketTypeIdAndSeatIdAndStatus(
+                    userId, eventId, ticketTypeId, seatId, ReservationStatus.PENDING
+            );
 
-        //     // Get the ID of the existing reservation if it exists, to exclude it from the count
-        //     Long existingReservationId = existingCartItemCheck.map(Reservation::getId).orElse(null);
+            // Get the ID of the existing reservation if it exists, to exclude it from the count
+            Long existingReservationId = existingCartItemCheck.map(Reservation::getId).orElse(null);
 
-        //     List<Reservation> userReservations = reservationRepository.findByUserIdAndStatusAndExpireAtAfter(userId, ReservationStatus.PENDING, LocalDateTime.now());
-        //     long reservedCount = userReservations.stream()
-        //             .filter(r -> r.getTicketTypeId().equals(ticketTypeId))
-        //             .filter(r -> !r.getId().equals(existingReservationId)) // Exclude the current reservation if it's an update
-        //             .mapToInt(Reservation::getQuantity)
-        //             .sum();
+            List<Reservation> userReservations = reservationRepository.findByUserIdAndStatusAndExpireAtAfter(userId, ReservationStatus.PENDING, LocalDateTime.now());
+            long reservedCount = userReservations.stream()
+                    .filter(r -> r.getTicketTypeId().equals(ticketTypeId))
+                    .filter(r -> !r.getId().equals(existingReservationId)) // Exclude the current reservation if it's an update
+                    .mapToInt(Reservation::getQuantity)
+                    .sum();
             
-        //     // Calculate total quantity including current request
-        //     long newTotalQuantity = purchasedCount + reservedCount + quantity;
+            // Calculate total quantity including current request
+            long newTotalQuantity = purchasedCount + reservedCount + quantity;
 
-        //     if (newTotalQuantity > ticketType.getPurchaseLimit()) {
-        //         throw new RuntimeException("Purchase limit exceeded. Limit is " + ticketType.getPurchaseLimit() + ". You have already bought/reserved " + (purchasedCount + reservedCount) + " tickets.");
-        //     }
-        // }
+            if (newTotalQuantity > ticketType.getPurchaseLimit()) {
+                throw new RuntimeException("Purchase limit exceeded. Limit is " + ticketType.getPurchaseLimit() + ". You have already bought/reserved " + (purchasedCount + reservedCount) + " tickets.");
+            }
+        }
         // --- End Purchase Limit Check ---
+
+        // Check sale time window
+        LocalDateTime now = LocalDateTime.now();
+        if (ticketType.getStartSale() != null && now.isBefore(ticketType.getStartSale())) {
+            throw new RuntimeException("Sale for this ticket type has not started yet. Sales start at: " + ticketType.getStartSale());
+        }
+        if (ticketType.getEndSale() != null && now.isAfter(ticketType.getEndSale())) {
+            throw new RuntimeException("Sale for this ticket type has ended. Sales ended at: " + ticketType.getEndSale());
+        }
 
         // Check if a PENDING reservation already exists for this item (re-declared for scope)
         Optional<Reservation> existingCartItem = reservationRepository.findByUserIdAndEventIdAndTicketTypeIdAndSeatIdAndStatus(
