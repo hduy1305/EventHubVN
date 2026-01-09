@@ -83,7 +83,7 @@ public class AuthService {
                         }
                 
                         UserDetails userDetails = new UserDetailsAdapter(u, allRoles); // Pass allRoles
-                        String access = jwtService.generateAccessToken(userDetails);
+                        String access = jwtService.generateAccessTokenWithOrgRoles(userDetails, orgRoleDtos, new ArrayList<>(allPermissions));
         String refresh = jwtService.generateRefreshToken(userDetails);
 
             return JwtResponse.builder()
@@ -93,9 +93,9 @@ public class AuthService {
                     .id(u.getId())
                     .fullName(u.getFullName())
                     .email(u.getEmail())
-                    .roles(new ArrayList<>()) // Aggregated roles (empty for now)
-                    .permissions(new ArrayList<>()) // Aggregated permissions (empty for now)
-                    .organizationRoles(new ArrayList<>()) // orgRoles (empty for now)
+                    .roles(new ArrayList<>(allRoles))
+                    .permissions(new ArrayList<>(allPermissions))
+                    .organizationRoles(orgRoleDtos)
                     .build();
     }
 
@@ -130,7 +130,7 @@ public class AuthService {
                                 }
                         
                                 UserDetails userDetails = new UserDetailsAdapter(user, allRoles); // Pass allRoles
-                                String newAccess = jwtService.refreshAccessToken(refreshToken, userDetails);
+                                String newAccess = jwtService.generateAccessTokenWithOrgRoles(userDetails, orgRoleDtos, new ArrayList<>(allPermissions));
                     return JwtResponse.builder()
                             .accessToken(newAccess)
                             .refreshToken(refreshToken)
@@ -138,8 +138,8 @@ public class AuthService {
                             .id(user.getId())
                             .fullName(user.getFullName())
                             .email(user.getEmail())
-                            .roles(new ArrayList<>()) // Aggregated roles (empty for now)
-                            .permissions(new ArrayList<>()) // Aggregated permissions (empty for now)
-                            .organizationRoles(new ArrayList<>()) // orgRoles (empty for now)
+                            .roles(new ArrayList<>(allRoles))
+                            .permissions(new ArrayList<>(allPermissions))
+                            .organizationRoles(orgRoleDtos)
                             .build();    }
 }

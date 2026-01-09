@@ -79,11 +79,12 @@ export class UsersService {
     ): CancelablePromise<void> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/users/{userId}/assigned-events/{eventId}',
+            url: '/api/users/{userId}/assign-event/{eventId}',
             path: {
                 'userId': userId,
                 'eventId': eventId,
             },
+            body: {}, // Add empty body for POST request
         });
     }
 
@@ -101,6 +102,50 @@ export class UsersService {
             url: '/api/users/{userId}/assigned-events',
             path: {
                 'userId': userId,
+            },
+        });
+    }
+
+    /**
+     * Unassign staff from an event
+     * @param userId
+     * @param eventId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteApiUsersAssignedEvents(
+        userId: string,
+        eventId: number,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/users/{userId}/unassign-event/{eventId}',
+            path: {
+                'userId': userId,
+                'eventId': eventId,
+            },
+        });
+    }
+
+    /**
+     * Assign STAFF role to a user in an organization
+     * @param userId
+     * @param organizationId
+     * @returns void
+     * @throws ApiError
+     */
+    public static postApiUsersAssignRole(
+        userId: string,
+        organizationId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/users/{userId}/assign-role',
+            path: {
+                'userId': userId,
+            },
+            query: {
+                'organizationId': organizationId,
             },
         });
     }

@@ -25,6 +25,19 @@ public class EventShowtimeController {
     public ResponseEntity<EventShowtime> getById(@PathVariable Long id) {
         return ResponseEntity.ok(eventShowtimeService.getById(id));
     }
+    
+    // Internal endpoint for ticket service - no auth required
+    @GetMapping("/internal/{id}")
+    public ResponseEntity<EventShowtime> getByIdInternal(@PathVariable Long id) {
+        return ResponseEntity.ok(eventShowtimeService.getById(id));
+    }
+    
+    @GetMapping("/event/{eventId}/by-code")
+    public ResponseEntity<EventShowtime> getByEventAndCode(
+            @PathVariable Long eventId, 
+            @RequestParam String code) {
+        return ResponseEntity.ok(eventShowtimeService.findByEventIdAndCode(eventId, code));
+    }
 
     @GetMapping("/after")
     public ResponseEntity<List<EventShowtime>> getShowtimesAfter(

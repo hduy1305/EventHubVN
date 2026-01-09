@@ -58,21 +58,10 @@ const ProfilePage: React.FC = () => {
                 primary="Roles" 
                 secondary={
                   user.roles && user.roles.length > 0 
-                  ? (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                      {user.roles.map((role, index) => {
-                        const authority = (role as any).authority || role;
-                        return (
-                          <Chip 
-                            key={index} 
-                            label={authority.replace('ROLE_', '')}
-                            color={authority === 'ROLE_ADMIN' ? 'error' : authority === 'ROLE_ORGANIZER' ? 'primary' : authority === 'ROLE_STAFF' ? 'info' : 'default'} 
-                            size="small" 
-                          />
-                        );
-                      })}
-                    </Box>
-                  ) 
+                  ? user.roles.map((role, index) => {
+                      const authority = (role as any).authority || role;
+                      return authority.replace('ROLE_', '');
+                    }).join(', ')
                   : 'No roles assigned'
                 } 
               />

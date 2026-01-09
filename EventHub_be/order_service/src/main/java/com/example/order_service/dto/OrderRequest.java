@@ -29,6 +29,7 @@ public class OrderRequest {
     @Builder
     public static class OrderItemRequest {
         private Long ticketTypeId;
+        private Long showtimeId; // NEW: Which showtime was selected
         private Integer quantity; // Quantity of tickets for this type
         private Double price;
         private List<Long> seatIds; // Optional: specific seat IDs if not coming from reservations

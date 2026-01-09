@@ -38,6 +38,8 @@ const CheckInPage: React.FC = () => {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
+  const [eventShowtimes, setEventShowtimes] = useState<any[]>([]);
+  const [selectedShowtimeId, setSelectedShowtimeId] = useState<string>('');
 
   const [ticketCodeInput, setTicketCodeInput] = useState<string>('');
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -68,14 +70,46 @@ const CheckInPage: React.FC = () => {
       const event = availableEvents.find(e => e.id === parseInt(selectedEventId));
       setCurrentEvent(event || null);
       if (event) {
+        fetchEventShowtimes(event.id!);
         fetchEventData(event.id!);
       }
     } else {
       setCurrentEvent(null);
+      setEventShowtimes([]);
+      setSelectedShowtimeId('');
       setCheckInLogs([]);
       setAttendeeTickets([]);
     }
   }, [selectedEventId, availableEvents]);
+
+  const fetchEventShowtimes = async (eventId: number) => {
+    try {
+      const ticketsWithShowtimes = await EventsService.getApiEventsTicketsWithShowtimes(eventId);
+      // Extract unique showtimes from all ticket types
+      const showtimesMap = new Map();
+      ticketsWithShowtimes.forEach(ticket => {
+        ticket.showtimes?.forEach((st: any) => {
+          if (!showtimesMap.has(st.showtimeId)) {
+            showtimesMap.set(st.showtimeId, {
+              id: st.showtimeId,
+              showtimeCode: st.showtimeCode,
+              startTime: st.startTime,
+              endTime: st.endTime
+            });
+          }
+        });
+      });
+      const showtimes = Array.from(showtimesMap.values());
+      console.log('Fetched showtimes:', showtimes);
+      setEventShowtimes(showtimes);
+      if (showtimes.length === 1) {
+        setSelectedShowtimeId(showtimes[0].id?.toString() || '');
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch showtimes:', err);
+      setEventShowtimes([]);
+    }
+  };
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -184,23 +218,41 @@ const CheckInPage: React.FC = () => {
     } catch (err: any) {
       const errorData = getErrorMessage(err, 'Không thể tải danh sách sự kiện');
       showNotification(errorData.message, getNotificationSeverity(errorData.type) as any);
-      console.error("Failed to fetch events:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getCheckInWindow = (event: Event) => {
+  const getCheckInWindow = (event: Event, showtimeId?: string) => {
+    // If showtimes exist and one is selected, use showtime's time
+    if (eventShowtimes.length > 0 && showtimeId) {
+      const showtime = eventShowtimes.find(st => st.id === Number(showtimeId));
+      if (showtime?.startTime && showtime?.endTime) {
+        const start = new Date(showtime.startTime);
+        const end = new Date(showtime.endTime);
+        const windowStart = new Date(start.getTime() - 60 * 60 * 1000); // 1 hour before
+        return { windowStart, start, end };
+      }
+    }
+    // Fallback to event time if no showtime
     if (!event.startTime || !event.endTime) {
       return null;
     }
     const start = new Date(event.startTime);
     const end = new Date(event.endTime);
-    const windowStart = new Date(start.getTime() - 15 * 60 * 1000);
+    const windowStart = new Date(start.getTime() - 60 * 60 * 1000); // 1 hour before
     return { windowStart, start, end };
   };
 
-  const checkInWindow = currentEvent ? getCheckInWindow(currentEvent) : null;
+  const checkInWindow = React.useMemo(() => {
+    if (!currentEvent) return null;
+    // Wait for showtimes to load if event has multiple showtimes
+    if (eventShowtimes.length === 0 && selectedEventId) {
+      console.log('Waiting for showtimes to load...');
+      return null;
+    }
+    return getCheckInWindow(currentEvent, selectedShowtimeId);
+  }, [currentEvent, selectedShowtimeId, eventShowtimes, selectedEventId]);
   const isCheckInActive = !!checkInWindow && now >= checkInWindow.windowStart && now <= checkInWindow.end;
   const isCheckInEnded = !!checkInWindow && now > checkInWindow.end;
   const showCheckInTooltip = isCheckInActive;
@@ -233,6 +285,37 @@ const CheckInPage: React.FC = () => {
       setLoading(false);
     }
   }, [showNotification]);
+
+  // Filter tickets and logs by selected showtime
+  // NOTE: Currently TicketResponse doesn't include showtimeCode field
+  // Filter tickets by selected showtime if applicable
+  const filteredTickets = React.useMemo(() => {
+    if (!selectedShowtimeId || eventShowtimes.length === 0) {
+      // No showtime filter - show all tickets
+      return attendeeTickets;
+    }
+    
+    // Find the selected showtime to get its code
+    const selectedShowtime = eventShowtimes.find(st => st.id === Number(selectedShowtimeId));
+    if (!selectedShowtime?.showtimeCode) {
+      return attendeeTickets;
+    }
+    
+    // Filter tickets by showtime code
+    return attendeeTickets.filter(ticket => ticket.showtimeCode === selectedShowtime.showtimeCode);
+  }, [attendeeTickets, selectedShowtimeId, eventShowtimes]);
+
+  const filteredLogs = React.useMemo(() => {
+    if (!selectedShowtimeId || eventShowtimes.length === 0) {
+      return checkInLogs;
+    }
+    
+    // Get ticket codes for the filtered showtime
+    const filteredTicketCodes = new Set(filteredTickets.map(t => t.ticketCode));
+    
+    // Filter logs to only show check-ins for tickets in the selected showtime
+    return checkInLogs.filter(log => filteredTicketCodes.has(log.ticket?.ticketCode || ''));
+  }, [checkInLogs, filteredTickets, selectedShowtimeId, eventShowtimes]);
 
   const handleTicketScan = async (ticketCode: string, isRescan: boolean = false) => {
     if (!selectedEventId || !ticketCode) {
@@ -311,39 +394,70 @@ const CheckInPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom fontWeight={700}>Check-in Operations</Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" fontWeight={700}>Check-in Operations</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {isAdmin && <Chip label="Admin Access" color="error" size="small" />}
+          {isOrganizer && <Chip label="Organizer Access" color="primary" size="small" />}
+          {!isAdmin && !isOrganizer && <Chip label="Staff Access" color="success" size="small" />}
+        </Box>
+      </Box>
       
       <Card sx={{ mb: 4 }}>
         <CardContent>
-          <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-            <TextField
-              label="Event Date"
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-            <TextField
-              select
-              label="Select Event"
-              fullWidth
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              helperText="Pick an event after choosing date to lock check-in window"
-            >
-              <MenuItem value="">-- Select an Event --</MenuItem>
-              {availableEvents
-                .filter(event => {
-                  if (!selectedDate || !event.startTime) return true;
-                  return event.startTime.startsWith(selectedDate);
-                })
-                .map(event => (
-                  <MenuItem key={event.id} value={event.id}>
-                    {event.name} ({new Date(event.startTime || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+          <Stack spacing={2}>
+            <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
+              <TextField
+                label="Event Date"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+              <TextField
+                select
+                label="Select Event"
+                fullWidth
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                helperText="Pick an event after choosing date to lock check-in window"
+              >
+                <MenuItem value="">-- Select an Event --</MenuItem>
+                {availableEvents
+                  .filter(event => {
+                    if (!selectedDate || !event.startTime) return true;
+                    return event.startTime.startsWith(selectedDate);
+                  })
+                  .map(event => (
+                    <MenuItem key={event.id} value={event.id}>
+                      {event.name} ({new Date(event.startTime || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                    </MenuItem>
+                  ))}
+              </TextField>
+            </Stack>
+            {eventShowtimes.length > 0 && selectedEventId && (
+              <TextField
+                select
+                label={eventShowtimes.length > 1 ? "Select Showtime *" : "Showtime"}
+                fullWidth
+                value={selectedShowtimeId}
+                onChange={(e) => {
+                  console.log('Showtime selected:', e.target.value);
+                  setSelectedShowtimeId(e.target.value);
+                }}
+                helperText={eventShowtimes.length > 1 ? "This event has multiple showtimes - select one for check-in" : "This event has one showtime"}
+                required={eventShowtimes.length > 1}
+                disabled={eventShowtimes.length === 1}
+              >
+                {eventShowtimes.length > 1 && <MenuItem value="">-- Select a Showtime --</MenuItem>}
+                {eventShowtimes.map(showtime => (
+                  <MenuItem key={showtime.id} value={showtime.id}>
+                    {showtime.showtimeCode} - {new Date(showtime.startTime).toLocaleString()} to {new Date(showtime.endTime).toLocaleTimeString()}
                   </MenuItem>
                 ))}
-            </TextField>
+              </TextField>
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -354,9 +468,24 @@ const CheckInPage: React.FC = () => {
             <Card sx={{ mb: 4 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Check-in for {currentEvent.name}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Window opens 15 minutes before start and closes at end time. Current start: {currentEvent.startTime ? new Date(currentEvent.startTime).toLocaleString() : 'N/A'}
-                </Typography>
+                {eventShowtimes.length > 1 && !selectedShowtimeId && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    Please select a showtime above to enable check-in
+                  </Alert>
+                )}
+                {checkInWindow && (() => {
+                  const selectedST = eventShowtimes.find(st => st.id === Number(selectedShowtimeId));
+                  return (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Window opens 1 hour before start and closes at end time. 
+                      {eventShowtimes.length > 1 && selectedShowtimeId && selectedST ? (
+                        <><br/>Showtime: {new Date(selectedST.startTime).toLocaleString()}</>
+                      ) : (
+                        <><br/>Start: {new Date(checkInWindow.start).toLocaleString()}</>
+                      )}
+                    </Typography>
+                  );
+                })()}
                 {showCountdown && checkInWindow && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     Check-in opens in {formatCountdown(checkInWindow.windowStart)}
@@ -419,7 +548,7 @@ const CheckInPage: React.FC = () => {
             <Card sx={{ mb: 4 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Check-in History</Typography>
-                {checkInLogs.length === 0 ? (
+                {filteredLogs.length === 0 ? (
                   <Alert severity="info">No check-in logs available for this event yet.</Alert>
                 ) : (
                   <TableContainer component={Paper}>
@@ -432,7 +561,7 @@ const CheckInPage: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {checkInLogs.map(log => (
+                        {filteredLogs.map(log => (
                           <TableRow key={log.id}>
                             <TableCell>{log.ticket?.ticketCode}</TableCell>
                             <TableCell>{log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString() : '-'}</TableCell>
@@ -462,7 +591,15 @@ const CheckInPage: React.FC = () => {
       {currentEvent && (
         <>
           <Typography variant="h5" gutterBottom fontWeight={700} sx={{ mt: 4 }}>All Event Tickets</Typography>
-          {attendeeTickets.length === 0 ? (
+          {eventShowtimes.length > 1 && selectedShowtimeId && (() => {
+            const st = eventShowtimes.find(s => s.id === Number(selectedShowtimeId));
+            return (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Showing tickets for showtime: <strong>{st?.showtimeCode}</strong> ({filteredTickets.length} tickets)
+              </Typography>
+            );
+          })()}
+          {filteredTickets.length === 0 ? (
             <Alert severity="info">No tickets sold for this event yet.</Alert>
           ) : (
             <TableContainer component={Paper}>
@@ -478,8 +615,8 @@ const CheckInPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {attendeeTickets.map(ticket => {
-                    const log = checkInLogs.find(l => l.ticket?.ticketCode === ticket.ticketCode);
+                  {filteredTickets.map(ticket => {
+                    const log = filteredLogs.find(l => l.ticket?.ticketCode === ticket.ticketCode);
                     const isCheckedIn = ticket.status === 'SCANNED';
                     return (
                       <TableRow key={ticket.id}>

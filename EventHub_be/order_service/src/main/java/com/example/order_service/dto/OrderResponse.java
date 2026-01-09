@@ -52,6 +52,7 @@ public class OrderResponse {
     public static class OrderItemResponse {
         private Long id;
         private Long ticketTypeId;
+        private Long showtimeId;
         private int quantity;
         private BigDecimal price;
 
@@ -59,6 +60,7 @@ public class OrderResponse {
             return OrderItemResponse.builder()
                     .id(item.getId())
                     .ticketTypeId(item.getTicketTypeId())
+                    .showtimeId(item.getShowtimeId())
                     .quantity(item.getQuantity())
                     .price(item.getPrice())
                     .build();

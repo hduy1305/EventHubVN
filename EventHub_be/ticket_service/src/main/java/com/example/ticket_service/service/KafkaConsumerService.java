@@ -46,6 +46,9 @@ public class KafkaConsumerService {
         TicketConfigSyncRequest ticketConfig = loadLatestTicketConfig(orderDetails.getEventId());
         Map<String, List<String>> ticketTypeZones = buildTicketTypeZones(ticketConfig);
         Map<String, Integer> zoneIndexByType = new HashMap<>();
+        
+        // Build map of ticketTypeCode to showtimeCode from allocations
+        Map<String, String> ticketTypeToShowtime = buildTicketTypeToShowtime(ticketConfig);
 
         Map<Long, String> ticketTypeIdToCode = new HashMap<>();
         if (orderDetails.getItems() != null) {
@@ -62,14 +65,35 @@ public class KafkaConsumerService {
             for (OrderDetailsDto.OrderItemDto item : orderDetails.getItems()) {
                 System.out.println("Processing item: " + item);
                 String ticketTypeCode = ticketTypeIdToCode.get(item.getTicketTypeId());
+                
+                // Get showtime code from the order item's showtimeId
+                String showtimeCode = null;
+                if (item.getShowtimeId() != null) {
+                    try {
+                        var showtime = eventServiceClient.getShowtimeByIdInternal(item.getShowtimeId());
+                        if (showtime != null) {
+                            showtimeCode = showtime.getCode();
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to fetch showtime for ID: " + item.getShowtimeId() + ", error: " + e.getMessage());
+                        // Fallback to allocation-based lookup
+                        showtimeCode = ticketTypeToShowtime.get(ticketTypeCode);
+                    }
+                } else {
+                    // Fallback for old orders without showtimeId
+                    showtimeCode = ticketTypeToShowtime.get(ticketTypeCode);
+                }
+                
                 for (int i = 0; i < item.getQuantity(); i++) {
                     String seatLabel = assignSeatLabel(ticketTypeCode, ticketTypeZones, zoneIndexByType);
                     Ticket ticket = Ticket.builder()
                             .orderId(orderDetails.getId())
                             .eventId(orderDetails.getEventId())
+                            .ticketTypeId(item.getTicketTypeId())
                             .userId(orderDetails.getUserId() != null ? orderDetails.getUserId().toString() : null)
                             .seatLabel(seatLabel)
                             .ticketCode(UUID.randomUUID().toString())
+                            .showtimeCode(showtimeCode)
                             .attendeeName(event.getUserEmail()) // Use user email as initial attendee name
                             .attendeeEmail(event.getUserEmail())
                             .build();
@@ -121,6 +145,21 @@ public class KafkaConsumerService {
             zones.get(code).add(label);
         }
         return zones;
+    }
+    
+    private Map<String, String> buildTicketTypeToShowtime(TicketConfigSyncRequest config) {
+        Map<String, String> mapping = new HashMap<>();
+        if (config == null || config.getAllocations() == null) {
+            return mapping;
+        }
+        for (TicketConfigSyncRequest.Allocation allocation : config.getAllocations()) {
+            if (allocation.getTicketTypeCode() != null && allocation.getShowtimeCode() != null) {
+                // If a ticket type is allocated to multiple showtimes, this will use the last one
+                // In practice, each ticket type should typically be allocated to one showtime
+                mapping.put(allocation.getTicketTypeCode(), allocation.getShowtimeCode());
+            }
+        }
+        return mapping;
     }
 
     private String assignSeatLabel(String ticketTypeCode, Map<String, List<String>> zones, Map<String, Integer> indices) {

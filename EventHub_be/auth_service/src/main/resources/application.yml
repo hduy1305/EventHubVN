@@ -19,7 +19,7 @@ spring:
 
 jwt:
   secret: a3NqaGdkamFza2hkamFzaGtkaGFza2poZGFza2pqYWRza2phc2hka2pha3NqaGRqYQ==
-  expiration: 3600000           # 1h = 3600000 ms
+  expiration: 86400000          # 24h = 86400000 ms
   refresh-expiration: 604800000 # 7 ngày
 
 logging:

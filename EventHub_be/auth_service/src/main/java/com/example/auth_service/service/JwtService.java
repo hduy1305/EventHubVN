@@ -62,6 +62,27 @@ public class JwtService {
                 accessTokenExpirationMs
         );
     }
+    
+    // New method with organizationRoles
+    public String generateAccessTokenWithOrgRoles(UserDetails userDetails, Object organizationRoles, Object permissions) {
+        if (!(userDetails instanceof com.example.auth_service.adapter.UserDetailsAdapter)) {
+            throw new IllegalArgumentException("UserDetails must be UserDetailsAdapter to generate token with ID");
+        }
+        com.example.auth_service.model.User user = ((com.example.auth_service.adapter.UserDetailsAdapter) userDetails).getUser();
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", userDetails.getAuthorities());
+        claims.put("id", user.getId().toString());
+        claims.put("fullName", user.getFullName());
+        claims.put("organizationRoles", organizationRoles);
+        claims.put("permissions", permissions);
+
+        return generateToken(
+                claims,
+                userDetails.getUsername(),
+                accessTokenExpirationMs
+        );
+    }
 
     public String generateRefreshToken(UserDetails userDetails) {
         if (!(userDetails instanceof com.example.auth_service.adapter.UserDetailsAdapter)) {

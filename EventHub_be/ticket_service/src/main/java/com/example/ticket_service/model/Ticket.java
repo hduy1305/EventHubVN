@@ -20,6 +20,7 @@ public class Ticket {
     private Long orderId;
     private Long eventId;
     private Long ticketTypeId; // Link to the ticket type
+    private String showtimeCode; // Code identifying which showtime this ticket is for
     private String userId;
     private Long seatId; // Link to specific seat if applicable
     private String seatLabel;

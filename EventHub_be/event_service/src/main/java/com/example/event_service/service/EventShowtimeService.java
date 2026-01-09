@@ -37,6 +37,11 @@ public class EventShowtimeService {
         return eventShowtimeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("EventShowtime not found"));
     }
+    
+    public EventShowtime findByEventIdAndCode(Long eventId, String code) {
+        return eventShowtimeRepository.findByEventIdAndCode(eventId, code)
+                .orElseThrow(() -> new RuntimeException("EventShowtime not found with code: " + code));
+    }
 
     public EventShowtime save(EventShowtime eventShowtime) {
         return eventShowtimeRepository.save(eventShowtime);

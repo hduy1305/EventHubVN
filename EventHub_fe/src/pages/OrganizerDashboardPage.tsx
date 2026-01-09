@@ -31,6 +31,7 @@ import { OrganizationService } from '../api/services/OrganizationService';
 import AddIcon from '@mui/icons-material/Add';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import PeopleIcon from '@mui/icons-material/People';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import { motion } from 'framer-motion';
 
@@ -99,8 +100,19 @@ const OrganizerDashboardPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Fetch all events and filter by organizerId
-      const response = await EventsService.getApiEventsSearch(undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      // Fetch all events regardless of status (pass undefined for status parameter)
+      const response = await EventsService.getApiEventsSearch(
+        undefined, // name
+        undefined, // category
+        undefined, // location
+        undefined, // startDate
+        undefined, // endDate
+        undefined, // minPrice
+        undefined, // status - explicitly undefined to get all statuses
+        undefined, // organizerId
+        0,         // page
+        100        // size
+      );
       const allEvents = response.content || [];
       const organizerManagedEvents = allEvents.filter(event => event.organizerId === user.id);
       setEvents(organizerManagedEvents);
@@ -190,6 +202,9 @@ const OrganizerDashboardPage: React.FC = () => {
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button component={RouterLink} to="/organizer/events/new" variant="contained" startIcon={<AddIcon />}>
             New Event
+          </Button>
+          <Button component={RouterLink} to="/organizer/staff" variant="outlined" startIcon={<PeopleIcon />}>
+            Staff
           </Button>
           <Button component={RouterLink} to="/organizer/orders" variant="outlined" startIcon={<ListAltIcon />}>
             Orders

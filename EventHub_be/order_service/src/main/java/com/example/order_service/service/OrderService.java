@@ -33,6 +33,15 @@ public class OrderService {
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
+        log.info("Creating order for user {} with {} items", request.getUserId(), 
+                request.getItems() != null ? request.getItems().size() : 0);
+        if (request.getItems() != null) {
+            for (OrderRequest.OrderItemRequest item : request.getItems()) {
+                log.info("Item: ticketTypeId={}, showtimeId={}, quantity={}, price={}", 
+                        item.getTicketTypeId(), item.getShowtimeId(), item.getQuantity(), item.getPrice());
+            }
+        }
+        
         // 1. Validate and process reservations
         List<Reservation> reservations = new ArrayList<>();
         if (request.getReservationIds() != null && !request.getReservationIds().isEmpty()) {
@@ -50,17 +59,21 @@ public class OrderService {
 
         // 2. Calculate total amount and prepare order items
         BigDecimal totalAmount = BigDecimal.ZERO;
-        Map<Long, OrderItem> orderItemMap = new HashMap<>(); // Map to group items by ticketType
+        Map<String, OrderItem> orderItemMap = new HashMap<>(); // Map to group items by ticketTypeId+showtimeId
 
                     // Process reservations first
                 for (Reservation res : reservations) {
                     // Confirm the reservation
                     reservationService.confirmReservation(res.getId());
         
+                    // Use ticketTypeId as key for reservations (no showtime concept in reservations)
+                    String key = String.valueOf(res.getTicketTypeId());
+                    
                     // Create or update OrderItem for this ticketType
-                    OrderItem orderItem = orderItemMap.computeIfAbsent(res.getTicketTypeId(), k ->
+                    OrderItem orderItem = orderItemMap.computeIfAbsent(key, k ->
                             OrderItem.builder()
                                     .ticketTypeId(res.getTicketTypeId())
+                                    .showtimeId(null) // Reservations don't have showtime
                                     .price(BigDecimal.ZERO) // Price will be updated later
                                     .quantity(0)
                                     .build()
@@ -78,9 +91,13 @@ public class OrderService {
                 // Handle direct order items if no reservations were used (e.g., general admission)
                 if (request.getReservationIds() == null || request.getReservationIds().isEmpty()) {
                     for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
-                        OrderItem orderItem = orderItemMap.computeIfAbsent(itemRequest.getTicketTypeId(), k ->
+                        // Use ticketTypeId+showtimeId as unique key to prevent grouping different showtimes
+                        String key = itemRequest.getTicketTypeId() + "_" + itemRequest.getShowtimeId();
+                        
+                        OrderItem orderItem = orderItemMap.computeIfAbsent(key, k ->
                                 OrderItem.builder()
                                         .ticketTypeId(itemRequest.getTicketTypeId())
+                                        .showtimeId(itemRequest.getShowtimeId())
                                         .price(BigDecimal.valueOf(itemRequest.getPrice()))
                                         .quantity(0)
                                         .build()
@@ -91,9 +108,11 @@ public class OrderService {
                 }
 
         // Validate purchase limits before proceeding
-        for (Map.Entry<Long, OrderItem> entry : orderItemMap.entrySet()) {
-            Long ticketTypeId = entry.getKey();
-            Integer quantityInOrder = entry.getValue().getQuantity();
+        for (Map.Entry<String, OrderItem> entry : orderItemMap.entrySet()) {
+            String key = entry.getKey();
+            OrderItem orderItem = entry.getValue();
+            Long ticketTypeId = orderItem.getTicketTypeId();
+            Integer quantityInOrder = orderItem.getQuantity();
             
             try {
                 TicketTypeDto ticketType = eventServiceClient.getTicketTypeById(ticketTypeId);

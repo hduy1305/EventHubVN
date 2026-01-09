@@ -59,15 +59,18 @@ const OrganizerEventDetailPage: React.FC = () => {
     if (!eventId) return;
     setCreating(true);
     try {
-      const payload: Discount = {
+      const payload: any = {
         code: discountForm.code,
-        discountPercent: discountForm.discountPercent ? Number(discountForm.discountPercent) : undefined,
-        discountAmount: discountForm.discountAmount ? Number(discountForm.discountAmount) : undefined,
-        usageLimit: discountForm.usageLimit ? Number(discountForm.usageLimit) : undefined,
-        validFrom: discountForm.validFrom || undefined,
-        validTo: discountForm.validTo || undefined,
-        minimumOrderAmount: discountForm.minimumOrderAmount ? Number(discountForm.minimumOrderAmount) : undefined,
+        event: { id: eventId }
       };
+      
+      if (discountForm.discountPercent) payload.discountPercent = Number(discountForm.discountPercent);
+      if (discountForm.discountAmount) payload.discountAmount = Number(discountForm.discountAmount);
+      if (discountForm.usageLimit) payload.usageLimit = Number(discountForm.usageLimit);
+      if (discountForm.minimumOrderAmount) payload.minimumOrderAmount = Number(discountForm.minimumOrderAmount);
+      if (discountForm.validFrom) payload.validFrom = discountForm.validFrom.includes('T') ? `${discountForm.validFrom}:00` : `${discountForm.validFrom}T00:00:00`;
+      if (discountForm.validTo) payload.validTo = discountForm.validTo.includes('T') ? `${discountForm.validTo}:00` : `${discountForm.validTo}T00:00:00`;
+      
       await EventsService.postApiEventsDiscounts(eventId, payload);
       showNotification('Discount code created successfully!', 'success');
       setDiscountForm({ code: '', discountPercent: '', discountAmount: '', usageLimit: '', validFrom: '', validTo: '', minimumOrderAmount: '' });
@@ -139,8 +142,8 @@ const OrganizerEventDetailPage: React.FC = () => {
                 <Grid item xs={6}><TextField label="Amount Discount" name="discountAmount" value={discountForm.discountAmount} onChange={handleDiscountInputChange} type="number" fullWidth /></Grid>
                 <Grid item xs={6}><TextField label="Usage Limit" name="usageLimit" value={discountForm.usageLimit} onChange={handleDiscountInputChange} type="number" fullWidth /></Grid>
                 <Grid item xs={6}><TextField label="Min Order Amount" name="minimumOrderAmount" value={discountForm.minimumOrderAmount} onChange={handleDiscountInputChange} type="number" fullWidth /></Grid>
-                <Grid item xs={6}><TextField label="Valid From" name="validFrom" value={discountForm.validFrom} onChange={handleDiscountInputChange} type="date" fullWidth InputLabelProps={{ shrink: true }} /></Grid>
-                <Grid item xs={6}><TextField label="Valid To" name="validTo" value={discountForm.validTo} onChange={handleDiscountInputChange} type="date" fullWidth InputLabelProps={{ shrink: true }} /></Grid>
+                <Grid item xs={6}><TextField label="Valid From" name="validFrom" value={discountForm.validFrom} onChange={handleDiscountInputChange} type="datetime-local" fullWidth InputLabelProps={{ shrink: true }} /></Grid>
+                <Grid item xs={6}><TextField label="Valid To" name="validTo" value={discountForm.validTo} onChange={handleDiscountInputChange} type="datetime-local" fullWidth InputLabelProps={{ shrink: true }} /></Grid>
                 <Grid item xs={12}>
                   <Button type="submit" variant="contained" color="primary" disabled={creating} fullWidth>
                     {creating ? 'Creating...' : 'Create Discount'}

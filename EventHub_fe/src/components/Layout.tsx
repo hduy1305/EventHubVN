@@ -121,14 +121,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               )}
 
               {hasOrganizerRole && (
-                 <Button 
-                   component={RouterLink} 
-                   to="/organizer/dashboard" 
-                   color={isActive('/organizer/dashboard') ? 'primary' : 'inherit'}
-                   sx={{ fontWeight: isActive('/organizer/dashboard') ? 600 : 500 }}
-                 >
-                   Organizer
-                 </Button>
+                <>
+                  <Button 
+                    component={RouterLink} 
+                    to="/organizer/dashboard" 
+                    color={isActive('/organizer/dashboard') ? 'primary' : 'inherit'}
+                    sx={{ fontWeight: isActive('/organizer/dashboard') ? 600 : 500 }}
+                  >
+                    Organizer
+                  </Button>
+                </>
               )}
               
               {hasAdminRole && (

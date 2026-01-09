@@ -22,7 +22,11 @@ public class OrderItem {
     @JoinColumn(name = "order_id")
     private Order order;
 
+    @Column(name = "ticket_type_id")
     private Long ticketTypeId;
+    
+    @Column(name = "showtime_id")
+    private Long showtimeId; // NEW: Store which showtime was selected
     private int quantity;
     private BigDecimal price;
 

@@ -15,6 +15,7 @@ public class OrderDetailsDto {
     @Data
     public static class OrderItemDto {
         private Long ticketTypeId;
+        private Long showtimeId;
         private int quantity;
     }
 }

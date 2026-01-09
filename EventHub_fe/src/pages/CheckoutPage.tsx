@@ -42,7 +42,14 @@ const CheckoutPage: React.FC = () => {
       return;
     }
 
-    const eventId = cartItems[0].eventId; 
+    // Check if all items are from the same event
+    const eventIds = [...new Set(cartItems.map(item => item.eventId))];
+    if (eventIds.length > 1) {
+      showNotification('Your cart contains tickets from multiple events. Discount can only be applied to one event at a time.', 'error');
+      return;
+    }
+
+    const eventId = eventIds[0]; 
 
     try {
       const discount = await EventsService.getApiEventsDiscountsValidate(eventId, discountCode);
@@ -78,22 +85,25 @@ const CheckoutPage: React.FC = () => {
     }
 
     try {
-      const orderItemsMap = new Map<number, { ticketTypeId: number; quantity: number; price: number }>();
+      const orderItemsMap = new Map<string, { ticketTypeId: number; showtimeId?: number; quantity: number; price: number }>();
 
       cartItems.forEach(item => {
-        if (!orderItemsMap.has(item.ticketTypeId)) {
-          orderItemsMap.set(item.ticketTypeId, {
+        const key = `${item.ticketTypeId}-${item.showtimeId || 0}`;
+        if (!orderItemsMap.has(key)) {
+          orderItemsMap.set(key, {
             ticketTypeId: item.ticketTypeId,
+            showtimeId: item.showtimeId,
             quantity: 0,
             price: item.price,
           });
         }
-        const currentItem = orderItemsMap.get(item.ticketTypeId)!;
+        const currentItem = orderItemsMap.get(key)!;
         currentItem.quantity += item.quantity;
       });
 
       const orderItems: OrderItemRequest[] = Array.from(orderItemsMap.values()).map(item => ({
         ticketTypeId: item.ticketTypeId,
+        showtimeId: item.showtimeId,
         quantity: item.quantity,
         price: item.price,
       }));
@@ -204,13 +214,32 @@ const CheckoutPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Discount Code</Typography>
+              {cartItems.length > 0 && (() => {
+                const eventIds = [...new Set(cartItems.map(item => item.eventId))];
+                const eventNames = [...new Set(cartItems.map(item => item.eventName))];
+                return (
+                  <>
+                    {eventIds.length > 1 && (
+                      <Alert severity="warning" sx={{ mb: 2 }}>
+                        Your cart has tickets from multiple events. Please checkout separately for each event to use discount codes.
+                      </Alert>
+                    )}
+                    {eventIds.length === 1 && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Discount code will be applied to: <strong>{eventNames[0]}</strong>
+                      </Typography>
+                    )}
+                  </>
+                );
+              })()}
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   label="Enter discount code"
                   variant="outlined"
                   fullWidth
                   value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value)}
+                  onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. 90DISC"
                 />
                 <Button variant="contained" onClick={handleApplyDiscount} disabled={checkoutLoading}>
                   Apply

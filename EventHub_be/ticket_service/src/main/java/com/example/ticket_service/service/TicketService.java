@@ -190,10 +190,44 @@ public class TicketService {
     public TicketResponse toResponse(Ticket ticket) {
         TicketResponse response = TicketResponse.fromEntity(ticket);
         try {
+            // Fetch event details
             var event = eventServiceClient.getEventById(ticket.getEventId());
             if (event != null) {
                 response.setEventName(event.getName());
                 response.setEventCategory(event.getCategory());
+            }
+            
+            // Fetch ticket type details
+            if (ticket.getTicketTypeId() != null) {
+                try {
+                    var ticketType = eventServiceClient.getTicketTypeById(ticket.getTicketTypeId());
+                    if (ticketType != null) {
+                        response.setTicketType(TicketResponse.TicketTypeInfo.builder()
+                                .id(ticketType.getId())
+                                .code(ticketType.getCode())
+                                .name(ticketType.getName())
+                                .build());
+                    }
+                } catch (Exception e) {
+                    // Log and continue
+                }
+            }
+            
+            // Fetch showtime details
+            if (ticket.getShowtimeCode() != null && ticket.getEventId() != null) {
+                try {
+                    var showtime = eventServiceClient.getShowtimeByCode(ticket.getEventId(), ticket.getShowtimeCode());
+                    if (showtime != null) {
+                        response.setShowtime(TicketResponse.ShowtimeInfo.builder()
+                                .id(showtime.getId())
+                                .code(showtime.getCode())
+                                .startTime(showtime.getStartTime())
+                                .endTime(showtime.getEndTime())
+                                .build());
+                    }
+                } catch (Exception e) {
+                    // Log and continue
+                }
             }
         } catch (Exception e) {
             // Log error and continue with partial data

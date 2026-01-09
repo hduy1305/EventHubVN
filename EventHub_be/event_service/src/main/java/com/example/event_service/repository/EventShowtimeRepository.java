@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface EventShowtimeRepository extends JpaRepository<EventShowtime, Long> {
@@ -14,4 +15,5 @@ public interface EventShowtimeRepository extends JpaRepository<EventShowtime, Lo
     List<EventShowtime> findByStartTimeAfter(LocalDateTime startTime);
     List<EventShowtime> findByEndTimeBefore(LocalDateTime endTime);
     List<EventShowtime> findByEventIdAndStartTimeAfterAndEndTimeBefore(Long eventId, LocalDateTime startTime, LocalDateTime endTime);
+    Optional<EventShowtime> findByEventIdAndCode(Long eventId, String code);
 }

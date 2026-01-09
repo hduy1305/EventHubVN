@@ -35,6 +35,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tickets/**").permitAll() // Public view of tickets (might need further refinement later)
                         .requestMatchers(HttpMethod.GET, "/api/seats/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/discounts/**").permitAll()
+                        // Internal API endpoints for service-to-service communication
+                        .requestMatchers(HttpMethod.GET, "/api/showtimes/internal/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         // All other requests (including POST, PUT, DELETE to above paths) require authentication
                         .anyRequest().authenticated()

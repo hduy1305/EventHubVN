@@ -4,6 +4,7 @@
 /* eslint-disable */
 export type OrderItemRequest = {
     ticketTypeId: number;
+    showtimeId?: number;
     quantity: number;
     price: number;
     seatIds?: Array<number>;

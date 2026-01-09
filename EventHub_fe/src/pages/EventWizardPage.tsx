@@ -446,15 +446,15 @@ const EventWizardInner: React.FC = () => {
       name: type.name,
       price: type.price,
       purchaseLimit: type.maxQuantity, // Max qty = purchase limit (per customer)
-      saleStart: type.saleStart,
-      saleEnd: type.saleEnd,
+      saleStart: type.saleStart ? `${type.saleStart}:00` : null,
+      saleEnd: type.saleEnd ? `${type.saleEnd}:00` : null,
       description: type.description,
     })),
     ticketDetails: state.ticketDetails.map(detail => ({
       code: detail.code,
       zoneName: detail.zoneName,
       ticketTypeCode: detail.ticketTypeCode,
-      checkInTime: detail.checkInTime,
+      checkInTime: detail.checkInTime ? `${detail.checkInTime}:00` : null,
     })),
     allocations: state.allocations.map(allocation => ({
       showtimeCode: allocation.showtimeCode,

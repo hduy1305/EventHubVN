@@ -17,6 +17,7 @@ public class TicketResponse {
     private Long seatId;
     private String seatLabel;
     private String ticketCode;
+    private String showtimeCode;
     private String eventName;
     private String eventCategory;
     private String attendeeName;
@@ -24,6 +25,27 @@ public class TicketResponse {
     private TicketStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Nested objects with full details
+    private TicketTypeInfo ticketType;
+    private ShowtimeInfo showtime;
+    
+    @Data
+    @Builder
+    public static class TicketTypeInfo {
+        private Long id;
+        private String code;
+        private String name;
+    }
+    
+    @Data
+    @Builder
+    public static class ShowtimeInfo {
+        private Long id;
+        private String code;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+    }
 
     public static TicketResponse fromEntity(Ticket ticket) {
         return TicketResponse.builder()
@@ -34,6 +56,7 @@ public class TicketResponse {
                 .seatId(ticket.getSeatId())
                 .seatLabel(ticket.getSeatLabel())
                 .ticketCode(ticket.getTicketCode())
+                .showtimeCode(ticket.getShowtimeCode())
                 .attendeeName(ticket.getAttendeeName())
                 .attendeeEmail(ticket.getAttendeeEmail())
                 .status(ticket.getStatus())

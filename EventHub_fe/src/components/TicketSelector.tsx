@@ -250,6 +250,7 @@ export const TicketSelector: React.FC<TicketSelectorProps> = ({ eventId, onAddTo
           price: ticket.price,
           eventId: eventId,
           eventName: '', // Will be fetched from event context or passed separately
+          showtimeId: showtime.showtimeId, // Pass showtime ID for backend
           showtimeCode: showtimeCode,
           showtimeName: `${showtime.showtimeCode} - ${parseISODate(showtime.startTime)?.toLocaleString()}`,
           quota: ticket.quota, // Total quota from backend
@@ -389,10 +390,6 @@ export const TicketSelector: React.FC<TicketSelectorProps> = ({ eventId, onAddTo
                           <Grid item xs={12} sm={6}>
                             <Typography variant="caption" display="block">
                               Available: {available} / {showtime.allocatedQuantity}
-                              <br />
-                              <span style={{ fontSize: '0.7rem', color: '#666' }}>
-                                (Sold: {showtime.soldQuantity}, Reserved: {showtime.reservedQuantity})
-                              </span>
                             </Typography>
                             {isSoldOut && (
                               <Chip label="Sold Out" size="small" color="error" />

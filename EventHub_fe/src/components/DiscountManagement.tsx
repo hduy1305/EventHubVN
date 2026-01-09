@@ -67,7 +67,19 @@ const DiscountManagement: React.FC<DiscountManagementProps> = ({ eventId }) => {
       if (editingDiscountId) {
         showNotification('Updating discount codes is not yet supported by the API.', 'warning');
       } else {
-        await EventsService.postApiEventsDiscounts(eventId, { ...newDiscount, event: { id: eventId } } as Discount);
+        const payload: any = {
+          code: newDiscount.code,
+          event: { id: eventId }
+        };
+        
+        if (newDiscount.discountPercent) payload.discountPercent = newDiscount.discountPercent;
+        if (newDiscount.discountAmount) payload.discountAmount = newDiscount.discountAmount;
+        if (newDiscount.minimumOrderAmount) payload.minimumOrderAmount = newDiscount.minimumOrderAmount;
+        if (newDiscount.usageLimit) payload.usageLimit = newDiscount.usageLimit;
+        if (newDiscount.validFrom) payload.validFrom = newDiscount.validFrom.includes('T') ? `${newDiscount.validFrom}:00` : `${newDiscount.validFrom}T00:00:00`;
+        if (newDiscount.validTo) payload.validTo = newDiscount.validTo.includes('T') ? `${newDiscount.validTo}:00` : `${newDiscount.validTo}T00:00:00`;
+        
+        await EventsService.postApiEventsDiscounts(eventId, payload);
         showNotification('Discount code added successfully!', 'success');
       }
       setEditingDiscountId(null);
